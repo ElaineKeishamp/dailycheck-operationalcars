@@ -5,6 +5,8 @@ app.use(express.json());
 
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/admin', require('./routes/admin.routes'));
+app.use('/api/daily-checks', require('./routes/dailyCheck.routes'));
+
 
 //end point 
 app.get('/', (req, res) => {
@@ -12,3 +14,4 @@ app.get('/', (req, res) => {
 });
 
 module.exports=app;
+
