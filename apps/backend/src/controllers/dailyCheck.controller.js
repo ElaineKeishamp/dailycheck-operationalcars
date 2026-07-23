@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
 async function startDailyCheck(req, res) {
-  const { vehicle_id, actual_driver_name } = req.body;
+  const { vehicle_id, actual_driver_name, gps_lat, gps_long, gps_address } = req.body;
   const userId = req.user.id;
 
   if (!vehicle_id) {
@@ -36,10 +36,10 @@ async function startDailyCheck(req, res) {
     }
 
     const result = await pool.query(
-      `INSERT INTO daily_checks (users_id, vehicle_id, actual_driver_name)
-       VALUES ($1, $2, $3) RETURNING *`,
-      [userId, vehicle_id, actual_driver_name || null]
-    );
+  `INSERT INTO daily_checks (users_id, vehicle_id, actual_driver_name, gps_lat, gps_long, gps_address)
+   VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+  [userId, vehicle_id, actual_driver_name || null, gps_lat || null, gps_long || null, gps_address || null]
+);
 
     res.status(201).json({ daily_check: result.rows[0] });
   } catch (err) {

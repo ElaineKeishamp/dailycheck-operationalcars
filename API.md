@@ -172,3 +172,75 @@ Submit laporan setelah semua foto wajib terupload.
 ```
 
 **Catatan buat frontend:** tampilkan `missing_parts` ke user biar tau bagian mana yang belum difoto.
+
+
+---
+
+## GET /admin/daily-checks
+Lihat semua laporan daily check. Bisa difilter.
+
+**Headers:** `Authorization: Bearer <token_admin>`
+
+**Query params (opsional):**
+- `date` — filter berdasarkan tanggal (format: YYYY-MM-DD)
+- `driver_id` — filter berdasarkan users_id driver
+- `vehicle_id` — filter berdasarkan vehicle_id
+
+**Response Sukses (200):**
+```json
+{
+  "reports": [
+    {
+      "daily_id": "...",
+      "driver_name": "...",
+      "plate_number": "...",
+      "brand": "...",
+      "model": "...",
+      "status": "incomplete",
+      ...
+    }
+  ]
+}
+```
+
+---
+
+## GET /admin/daily-checks/:id
+Detail 1 laporan lengkap dengan semua foto yang sudah diupload.
+
+**Headers:** `Authorization: Bearer <token_admin>`
+
+**Response Sukses (200):**
+```json
+{
+  "report": { "daily_id": "...", "driver_name": "...", ... },
+  "photos": [
+    { "check_photos_id": "...", "part_type": "odo", "note": "...", ... }
+  ]
+}
+```
+
+**Response Gagal (404):**
+```json
+{ "error": "Laporan tidak ditemukan" }
+```
+
+---
+
+## GET /admin/dashboard/today
+Ringkasan status checking hari ini — dipakai buat lihat siapa yang belum checking.
+
+**Headers:** `Authorization: Bearer <token_admin>`
+
+**Response Sukses (200):**
+```json
+{
+  "total_driver": 4,
+  "sudah_checking": 2,
+  "belum_checking": [
+    { "users_id": "...", "name": "...", "email": "..." }
+  ]
+}
+```
+
+**Catatan buat frontend:** tampilkan `belum_checking` sebagai list di dashboard admin.
