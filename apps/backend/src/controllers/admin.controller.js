@@ -129,4 +129,175 @@ async function getTodayStatus(req, res) {
     res.status(500).json({ error: 'Terjadi kesalahan server' });
   }
 }
-module.exports = { resetPassword, getAllReports, getReportDetail, getTodayStatus };
+
+async function createUser(req, res) {
+  const { name, email, role, is_shared_account } = req.body;
+
+  if (!name || !email || !role) {
+    return res.status(400).json({ error: 'name, email, dan role wajib diisi' });
+  }
+
+  if (!['admin', 'driver'].includes(role)) {
+    return res.status(400).json({ error: 'role harus admin atau driver' });
+  }
+
+  try {
+    const existing = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'Email sudah terdaftar' });
+    }
+
+    const tempPassword = crypto.randomBytes(4).toString('hex');
+    const hash = await bcrypt.hash(tempPassword, 10);
+
+    const result = await pool.query(
+      `INSERT INTO users (name, email, password_hash, role, is_shared_account, must_change_password)
+       VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING users_id, name, email, role, is_shared_account, status`,
+      [name, email, hash, role, is_shared_account || false]
+    );
+
+    res.status(201).json({
+      user: result.rows[0],
+      temporary_password: tempPassword,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Terjadi kesalahan server' });
+  }
+}
+
+async function getAllUsers(req, res) {
+  try {
+    const result = await pool.query(
+      `SELECT users_id, name, email, role, is_shared_account, status, must_change_password, created_at 
+       FROM users 
+       ORDER BY role ASC, name ASC`
+    );
+
+    res.json({ users: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Terjadi kesalahan server' });
+  }
+}
+
+
+async function updateUser(req, res) {
+  const { id } = req.params;
+  const { name, role, is_shared_account, status } = req.body;
+
+  try {
+    const existing = await pool.query('SELECT * FROM users WHERE users_id = $1', [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'User tidak ditemukan' });
+    }
+
+    if (role && !['admin', 'driver'].includes(role)) {
+      return res.status(400).json({ error: 'role harus admin atau driver' });
+    }
+    if (status && !['active', 'inactive'].includes(status)) {
+      return res.status(400).json({ error: 'status harus active atau inactive' });
+    }
+
+    const current = existing.rows[0];
+
+    const result = await pool.query(
+      `UPDATE users 
+       SET name = $1, role = $2, is_shared_account = $3, status = $4
+       WHERE users_id = $5 
+       RETURNING users_id, name, email, role, is_shared_account, status`,
+      [
+        name || current.name,
+        role || current.role,
+        is_shared_account !== undefined ? is_shared_account : current.is_shared_account,
+        status || current.status,
+        id,
+      ]
+    );
+
+    res.json({ user: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Terjadi kesalahan server' });
+  }
+}
+
+
+async function createVehicle(req, res) {
+  const { plate_number, brand, model } = req.body;
+
+  if (!plate_number || !brand || !model) {
+    return res.status(400).json({ error: 'plate_number, brand, dan model wajib diisi' });
+  }
+
+  try {
+    const existing = await pool.query('SELECT * FROM vehicles WHERE plate_number = $1', [plate_number]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'Plat nomor sudah terdaftar' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO vehicles (plate_number, brand, model)
+       VALUES ($1, $2, $3) RETURNING *`,
+      [plate_number, brand, model]
+    );
+
+    res.status(201).json({ vehicle: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Terjadi kesalahan server' });
+  }
+}
+
+
+async function getAllVehicles(req, res) {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM vehicles ORDER BY status ASC, plate_number ASC`
+    );
+
+    res.json({ vehicles: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Terjadi kesalahan server' });
+  }
+}
+
+
+async function updateVehicle(req, res) {
+  const { id } = req.params;
+  const { plate_number, brand, model, status } = req.body;
+
+  try {
+    const existing = await pool.query('SELECT * FROM vehicles WHERE vehicle_id = $1', [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Mobil tidak ditemukan' });
+    }
+
+    if (status && !['active', 'inactive'].includes(status)) {
+      return res.status(400).json({ error: 'status harus active atau inactive' });
+    }
+
+    const current = existing.rows[0];
+
+    const result = await pool.query(
+      `UPDATE vehicles 
+       SET plate_number = $1, brand = $2, model = $3, status = $4
+       WHERE vehicle_id = $5 
+       RETURNING *`,
+      [
+        plate_number || current.plate_number,
+        brand || current.brand,
+        model || current.model,
+        status || current.status,
+        id,
+      ]
+    );
+
+    res.json({ vehicle: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Terjadi kesalahan server' });
+  }
+}
+module.exports = { resetPassword, getAllReports, getReportDetail, getTodayStatus, createUser, getAllUsers, updateUser, createVehicle, getAllVehicles, updateVehicle };
