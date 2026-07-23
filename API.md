@@ -16,6 +16,19 @@ Login untuk semua role (admin & driver, termasuk akun Driver Pengganti).
   "password": "admin123"
 }
 ```
+## Alur Lupa Password
+
+1. User klik "Lupa Password?" di halaman login → tampilkan info statis: 
+   "Silakan hubungi admin untuk reset password" (tidak perlu panggil API apa pun di step ini)
+2. User hubungi admin di luar sistem (WA/verbal)
+3. Admin reset lewat PATCH /admin/users/:id/reset-password
+4. Admin kasih tau password sementara ke user secara manual
+5. User login pakai email + password sementara → POST /auth/login
+6. Response login berisi must_change_password: true
+7. Frontend WAJIB redirect paksa ke halaman Ganti Password (tidak boleh ke dashboard dulu)
+8. User isi password baru + konfirmasi (konfirmasi dicek di frontend saja)
+9. Submit ke POST /auth/change-password
+10. Setelah sukses, baru redirect ke dashboard sesuai role
 
 **Response Sukses (200):**
 ```json
@@ -93,16 +106,3 @@ Khusus admin. Reset password user mana pun — sistem generate password sementar
 - Tombol "Reset Password" ada di halaman kelola user (khusus tampilan admin)
 - Tampilkan `temporary_password` ke admin di layar, supaya admin bisa kasih tau ke user secara manual
 
-## Alur Lupa Password
-
-1. User klik "Lupa Password?" di halaman login → tampilkan info statis: 
-   "Silakan hubungi admin untuk reset password" (tidak perlu panggil API apa pun di step ini)
-2. User hubungi admin di luar sistem (WA/verbal)
-3. Admin reset lewat PATCH /admin/users/:id/reset-password
-4. Admin kasih tau password sementara ke user secara manual
-5. User login pakai email + password sementara → POST /auth/login
-6. Response login berisi must_change_password: true
-7. Frontend WAJIB redirect paksa ke halaman Ganti Password (tidak boleh ke dashboard dulu)
-8. User isi password baru + konfirmasi (konfirmasi dicek di frontend saja)
-9. Submit ke POST /auth/change-password
-10. Setelah sukses, baru redirect ke dashboard sesuai role
