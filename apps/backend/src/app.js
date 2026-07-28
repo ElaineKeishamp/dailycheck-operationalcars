@@ -1,5 +1,12 @@
 const express=require('express');
+const cors=require('cors');
 const app=express();
+
+// Allow requests from the Vite frontend dev server
+app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:4173'],
+    credentials: true,
+}));
 
 app.use(express.json());
 
