@@ -133,6 +133,17 @@ Upload foto per bagian mobil. Dipanggil berkali-kali (1 kali per foto).
 **Response Sukses (201):**
 ```json
 { "photo": { "check_photos_id": "...", "part_type": "odo", ... } }
+
+---
+
+**Catatan Pengerjaan Backend (2026-07-28)**
+
+- **Validation:** ditambahkan dependency `express-validator` dan middleware `src/middlewares/validate.js`. Routes yang diperbarui: `src/routes/auth.routes.js`, `src/routes/dailyCheck.routes.js`, `src/routes/admin.routes.js`.
+- **Model layer:** sudah ada model terpisah di `src/models/` — `user.model.js`, `vehicle.model.js`, `dailyCheck.model.js`, `checkPhoto.model.js`.
+- **Controllers:** `src/controllers/` sudah memanggil model-layer (e.g., `auth.controller.js`, `admin.controller.js`, `dailyCheck.controller.js`).
+- **Server:** dependensi diinstall (`npm install`) dan server berhasil dijalankan dengan `nodemon`.
+- **Rekomendasi selanjutnya:** pisahkan logika bisnis ke `src/services/`, tambahkan unit/integration tests, atau integrasikan penyimpanan foto (S3/R2) menggantikan dummy keys.
+
 ```
 
 *(Catatan: saat ini foto belum benar-benar diupload ke storage — masih pakai path dummy sementara integrasi MinIO belum selesai)*
