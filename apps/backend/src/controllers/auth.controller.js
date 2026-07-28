@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const pool = require('../config/db');
+const userModel = require('../models/user.model');
 
 async function login(req, res) {
   const { email, password } = req.body;
@@ -10,8 +10,7 @@ async function login(req, res) {
   }
 
   try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    const user = result.rows[0];
+    const user = await userModel.findByEmail(email);
 
     if (!user) {
       return res.status(401).json({ error: 'Email tidak ditemukan' });
@@ -58,8 +57,7 @@ async function changePassword(req, res) {
   }
 
   try {
-    const result = await pool.query('SELECT * FROM users WHERE users_id = $1', [userId]);
-    const user = result.rows[0];
+    const user = await userModel.findById(userId);
 
     const validOldPassword = await bcrypt.compare(old_password, user.password_hash);
     if (!validOldPassword) {
@@ -68,12 +66,7 @@ async function changePassword(req, res) {
 
     const newHash = await bcrypt.hash(new_password, 10);
 
-    await pool.query(
-      `UPDATE users 
-       SET password_hash = $1, must_change_password = FALSE 
-       WHERE users_id = $2`,
-      [newHash, userId]
-    );
+    await userModel.updatePassword(userId, newHash, false);
 
     res.json({ message: 'Password berhasil diganti' });
   } catch (err) {
