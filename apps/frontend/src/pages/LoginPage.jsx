@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Car, AlertCircle } from 'lucide-react';
 import apiClient from '../api/client';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
+import { getAuthenticatedHomePath } from '../utils/authRoutes';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -27,24 +28,24 @@ export default function LoginPage() {
         password: form.password,
       });
       const { token, user } = res.data;
+
+      if (!['admin', 'driver'].includes(user?.role)) {
+        setError('Akses tidak tersedia untuk akun ini.');
+        return;
+      }
+
       login(user, token);
 
-      // Redirect based on must_change_password
       if (user.must_change_password) {
         navigate('/change-password', { replace: true });
         return;
       }
 
-      // Redirect based on role
-      if (user.role === 'admin') {
-        navigate('/admin/dashboard', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      navigate(getAuthenticatedHomePath(user), { replace: true });
     } catch (err) {
       const status = err.response?.status;
       if (status === 401) {
-        setError('Email atau password salah.');
+        setError('Email atau password salah');
       } else if (status === 403) {
         setError('Akun Anda telah dinonaktifkan. Hubungi admin.');
       } else {
@@ -73,9 +74,21 @@ export default function LoginPage() {
           <p className="text-sm text-slate-500 mb-6">Masuk untuk melanjutkan</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Error */}
+            {error && (
+              <div
+                className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-lg"
+                role="alert"
+                aria-live="polite"
+              >
+                <AlertCircle size={15} className="text-red-500 flex-shrink-0" />
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Email
               </label>
               <input
@@ -92,7 +105,7 @@ export default function LoginPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label htmlFor="login-password" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -109,25 +122,18 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPw(!showPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  tabIndex={-1}
+                  aria-label={showPw ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
-            {/* Forgot password note */}
-            <p className="text-xs text-slate-400 text-right">
-              Lupa password? Hubungi admin Anda.
-            </p>
-
-            {/* Error */}
-            {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-lg">
-                <AlertCircle size={15} className="text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
+            <div className="text-right">
+              <Link to="/forgot-password" className="text-xs font-medium text-primary hover:text-primary-hover">
+                Lupa Password?
+              </Link>
+            </div>
 
             {/* Submit */}
             <button
