@@ -9,6 +9,16 @@ async function getAllVehicles() {
   return result.rows;
 }
 
+async function findActive() {
+  const result = await pool.query(
+    `SELECT vehicle_id, plate_number, brand, model, status
+     FROM vehicles
+     WHERE status = 'active'
+     ORDER BY plate_number ASC`
+  );
+  return result.rows;
+}
+
 async function findById(id) {
   const result = await pool.query('SELECT * FROM vehicles WHERE vehicle_id = $1', [id]);
   return result.rows[0] || null;
@@ -39,6 +49,7 @@ async function updateVehicle(id, { status }) {
 
 module.exports = {
   getAllVehicles,
+  findActive,
   findById,
   findByPlateNumber,
   createVehicle,

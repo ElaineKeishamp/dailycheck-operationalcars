@@ -87,6 +87,41 @@ User ganti password sendiri. WAJIB dipanggil kalau `must_change_password = true`
 
 ---
 
+## GET /vehicles
+List mobil aktif untuk pilihan kendaraan driver. Endpoint ini bisa diakses oleh semua user yang sudah login, baik `driver` maupun `admin`.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response Sukses (200):**
+```json
+{
+  "vehicles": [
+    {
+      "vehicle_id": "uuid",
+      "plate_number": "BK 1234 AB",
+      "brand": "Toyota",
+      "model": "Avanza",
+      "status": "active"
+    }
+  ]
+}
+```
+
+**Response jika tidak ada mobil aktif (200):**
+```json
+{
+  "vehicles": []
+}
+```
+
+**Catatan:**
+- Hanya mengembalikan mobil dengan `status: active`
+- Data diurutkan berdasarkan `plate_number` ascending
+- Endpoint ini tidak bisa dipakai untuk tambah, edit, atau menonaktifkan mobil
+- Untuk token kosong/tidak valid, gunakan response auth middleware yang sudah ada
+
+---
+
 ## POST /daily-checks
 Driver mulai sesi checking harian.
 
