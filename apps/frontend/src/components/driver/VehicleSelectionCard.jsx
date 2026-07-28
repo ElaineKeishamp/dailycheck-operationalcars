@@ -22,10 +22,15 @@ export default function VehicleSelectionCard({
   canStartChecking,
   onPrepareStartChecking,
   preparationMessage,
+  sessionStatus,
+  sessionError,
+  isSessionActive,
 }) {
   const hasVehicleError = Boolean(vehiclesError);
   const hasNoVehicles = !vehiclesLoading && !hasVehicleError && vehicles.length === 0;
-  const selectDisabled = vehiclesLoading || hasVehicleError || hasNoVehicles;
+  const isStarting = sessionStatus === 'starting';
+  const selectDisabled = vehiclesLoading || hasVehicleError || hasNoVehicles || isStarting || isSessionActive;
+  const preparationLocked = isStarting || isSessionActive;
 
   return (
     <section className="bg-white border border-slate-100 rounded-xl shadow-card p-4">
@@ -85,6 +90,7 @@ export default function VehicleSelectionCard({
               placeholder="Masukkan nama..."
               value={actualDriverName}
               onChange={(e) => onActualDriverNameChange(e.target.value)}
+              disabled={preparationLocked}
             />
             <p className="mt-1.5 text-xs text-slate-500">Isi nama Anda karena ini akun bersama</p>
           </div>
@@ -94,7 +100,7 @@ export default function VehicleSelectionCard({
           status={locationStatus}
           coordinates={coordinates}
           errorMessage={locationErrorMessage}
-          onRetry={onRetryLocation}
+          onRetry={isSessionActive ? undefined : onRetryLocation}
         />
 
         {preparationMessage && (
@@ -103,20 +109,41 @@ export default function VehicleSelectionCard({
           </div>
         )}
 
-        <button
-          type="button"
-          disabled={!canStartChecking}
-          onClick={onPrepareStartChecking}
-          className={`w-full min-h-11 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors ${
-            canStartChecking
-              ? 'bg-primary text-white hover:bg-primary-hover'
-              : 'bg-slate-200 text-slate-500 cursor-not-allowed'
-          }`}
-        >
-          <PlayCircle size={18} aria-hidden="true" />
-          Mulai Checking
-        </button>
-        {/* POST /daily-checks will be connected in Phase 4. */}
+        {sessionError && (
+          <div
+            className={`rounded-lg border p-3 ${
+              sessionStatus === 'conflict'
+                ? 'border-amber-100 bg-amber-50'
+                : 'border-red-100 bg-red-50'
+            }`}
+            role="status"
+            aria-live="polite"
+          >
+            <p className={`text-sm ${sessionStatus === 'conflict' ? 'text-amber-700' : 'text-red-600'}`}>
+              {sessionError}
+            </p>
+          </div>
+        )}
+
+        {!isSessionActive && (
+          <button
+            type="button"
+            disabled={!canStartChecking || isStarting}
+            onClick={onPrepareStartChecking}
+            className={`w-full min-h-11 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors ${
+              canStartChecking && !isStarting
+                ? 'bg-primary text-white hover:bg-primary-hover'
+                : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+            }`}
+          >
+            {isStarting ? (
+              <span className="w-4 h-4 border-2 border-slate-400/40 border-t-slate-500 rounded-full animate-spin" aria-hidden="true" />
+            ) : (
+              <PlayCircle size={18} aria-hidden="true" />
+            )}
+            {isStarting ? 'Memulai Checking...' : 'Mulai Checking'}
+          </button>
+        )}
       </div>
     </section>
   );

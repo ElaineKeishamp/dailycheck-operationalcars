@@ -28,7 +28,7 @@ export default function LocationPermissionStatus({
   onRetry,
 }) {
   const Icon = getStatusIcon(status);
-  const canRetry = ['denied', 'unavailable', 'timeout', 'unsupported', 'error'].includes(status);
+  const canRetry = Boolean(onRetry) && ['denied', 'unavailable', 'timeout', 'unsupported', 'error'].includes(status);
   const accuracy = coordinates?.accuracy ? Math.round(coordinates.accuracy) : null;
 
   return (

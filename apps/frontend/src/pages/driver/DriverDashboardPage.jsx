@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import ActiveDailyCheckStatus from '../../components/driver/ActiveDailyCheckStatus';
 import ChecklistProgress from '../../components/driver/ChecklistProgress';
 import DriverHeader from '../../components/driver/DriverHeader';
 import OptionalPhotoCard from '../../components/driver/OptionalPhotoCard';
@@ -8,6 +9,7 @@ import TireChecklistGrid from '../../components/driver/TireChecklistGrid';
 import VehicleSelectionCard from '../../components/driver/VehicleSelectionCard';
 import { STANDARD_PHOTO_ITEMS, REQUIRED_CHECKLIST_TOTAL } from '../../config/driverChecklist';
 import { useAuth } from '../../context/useAuth';
+import { useDailyCheckSession } from '../../hooks/useDailyCheckSession';
 import { useDriverVehicles } from '../../hooks/useDriverVehicles';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { canStartDriverChecking } from '../../utils/driverPreparation';
@@ -29,11 +31,22 @@ export default function DriverDashboardPage() {
 
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const [actualDriverName, setActualDriverName] = useState('');
-  const [preparationMessage, setPreparationMessage] = useState(null);
+  const {
+    dailyCheck,
+    status: sessionStatus,
+    error: sessionError,
+    startDailyCheck,
+    clearError: clearSessionError,
+  } = useDailyCheckSession();
   const isSharedAccount = Boolean(user?.is_shared_account);
+  const isSessionActive = sessionStatus === 'active' && Boolean(dailyCheck);
+  const selectedVehicle = useMemo(() => {
+    return vehicles.find((vehicle) => vehicle.vehicle_id === selectedVehicleId) || null;
+  }, [selectedVehicleId, vehicles]);
 
   const canStartChecking = canStartDriverChecking({
     selectedVehicleId,
+    selectedVehicle,
     isSharedAccount,
     actualDriverName,
     locationStatus,
@@ -52,13 +65,17 @@ export default function DriverDashboardPage() {
   }, [selectedVehicleId, vehicles]);
 
   useEffect(() => {
-    setPreparationMessage(null);
-  }, [actualDriverName, coordinates, locationStatus, selectedVehicleId, vehiclesError, vehiclesLoading]);
+    clearSessionError();
+  }, [actualDriverName, clearSessionError, coordinates, locationStatus, selectedVehicleId, vehiclesError, vehiclesLoading]);
 
-  const handlePrepareStartChecking = () => {
+  const handlePrepareStartChecking = async () => {
     if (!canStartChecking) return;
 
-    setPreparationMessage('Data kendaraan dan lokasi sudah siap. Sesi checking akan dibuat pada tahap berikutnya.');
+    await startDailyCheck({
+      vehicleId: selectedVehicle.vehicle_id,
+      actualDriverName: isSharedAccount ? actualDriverName : '',
+      coordinates,
+    });
   };
 
   return (
@@ -83,23 +100,31 @@ export default function DriverDashboardPage() {
             onActualDriverNameChange={setActualDriverName}
             canStartChecking={canStartChecking}
             onPrepareStartChecking={handlePrepareStartChecking}
-            preparationMessage={preparationMessage}
+            sessionStatus={sessionStatus}
+            sessionError={sessionError}
+            isSessionActive={isSessionActive}
           />
 
-          <ChecklistProgress completedCount={0} totalCount={REQUIRED_CHECKLIST_TOTAL} />
+          {isSessionActive && (
+            <>
+              <ActiveDailyCheckStatus selectedVehicle={selectedVehicle} />
 
-          <section className="space-y-3" aria-label="Checklist foto standar">
-            {STANDARD_PHOTO_ITEMS.map((item) => (
-              <PhotoChecklistCard key={item.id} item={item} />
-            ))}
-          </section>
+              <ChecklistProgress completedCount={0} totalCount={REQUIRED_CHECKLIST_TOTAL} />
 
-          <TireChecklistGrid />
+              <section className="space-y-3" aria-label="Checklist foto standar">
+                {STANDARD_PHOTO_ITEMS.map((item) => (
+                  <PhotoChecklistCard key={item.id} item={item} />
+                ))}
+              </section>
 
-          <OptionalPhotoCard />
+              <TireChecklistGrid />
+
+              <OptionalPhotoCard />
+            </>
+          )}
         </div>
 
-        <SubmitReportSection />
+        {isSessionActive && <SubmitReportSection />}
       </main>
     </div>
   );
