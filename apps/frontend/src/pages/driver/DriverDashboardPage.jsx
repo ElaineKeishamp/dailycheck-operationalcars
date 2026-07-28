@@ -1,35 +1,49 @@
-import { useNavigate } from 'react-router-dom';
-import { Car, LogOut } from 'lucide-react';
+import { useState } from 'react';
+import ChecklistProgress from '../../components/driver/ChecklistProgress';
+import DriverHeader from '../../components/driver/DriverHeader';
+import OptionalPhotoCard from '../../components/driver/OptionalPhotoCard';
+import PhotoChecklistCard from '../../components/driver/PhotoChecklistCard';
+import SubmitReportSection from '../../components/driver/SubmitReportSection';
+import TireChecklistGrid from '../../components/driver/TireChecklistGrid';
+import VehicleSelectionCard from '../../components/driver/VehicleSelectionCard';
+import { STANDARD_PHOTO_ITEMS, REQUIRED_CHECKLIST_TOTAL } from '../../config/driverChecklist';
+import { TEMPORARY_VEHICLES } from '../../config/driverVehicles';
 import { useAuth } from '../../context/useAuth';
 
 export default function DriverDashboardPage() {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
+  const { user } = useAuth();
+  const [selectedVehicleId, setSelectedVehicleId] = useState(TEMPORARY_VEHICLES[0]?.id || '');
+  const [sharedDriverName, setSharedDriverName] = useState('');
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-card-md border border-slate-100 p-7 text-center">
-        <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-100 text-primary rounded-2xl mb-4">
-          <Car size={28} />
+    <div className="min-h-screen bg-slate-50">
+      <main className="mx-auto w-full max-w-2xl px-4 py-4 sm:py-6">
+        <div className="space-y-4 pb-4">
+          <DriverHeader />
+
+          <VehicleSelectionCard
+            selectedVehicleId={selectedVehicleId}
+            onVehicleChange={setSelectedVehicleId}
+            isSharedAccount={Boolean(user?.is_shared_account)}
+            driverName={sharedDriverName}
+            onDriverNameChange={setSharedDriverName}
+          />
+
+          <ChecklistProgress completedCount={0} totalCount={REQUIRED_CHECKLIST_TOTAL} />
+
+          <section className="space-y-3" aria-label="Checklist foto standar">
+            {STANDARD_PHOTO_ITEMS.map((item) => (
+              <PhotoChecklistCard key={item.id} item={item} />
+            ))}
+          </section>
+
+          <TireChecklistGrid />
+
+          <OptionalPhotoCard />
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard Driver</h1>
-        <p className="text-sm text-slate-500 mt-2">
-          Halo, {user?.name || 'Driver'}. Fondasi autentikasi Driver Dashboard sudah siap.
-        </p>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="btn-secondary justify-center mt-6 w-full py-2.5"
-        >
-          <LogOut size={17} />
-          Logout
-        </button>
-      </div>
+
+        <SubmitReportSection />
+      </main>
     </div>
   );
 }
