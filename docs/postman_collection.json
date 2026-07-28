@@ -1,0 +1,77 @@
+{
+  "info": {
+    "_postman_id": "dailycheck-minimal",
+    "name": "DailyCheck - Minimal API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"admin@test.com\", \"password\": \"admin123\"}"
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      }
+    },
+    {
+      "name": "Get Users (admin)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/api/admin/users"
+      }
+    },
+    {
+      "name": "Create User (admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"Nama Depan\", \"email\": \"user@test.com\", \"role\": \"driver\", \"is_shared_account\": false}"
+        },
+        "url": "{{baseUrl}}/api/admin/users"
+      }
+    },
+    {
+      "name": "Get Vehicles (admin)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/api/admin/vehicles"
+      }
+    },
+    {
+      "name": "Create Vehicle (admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"plate_number\": \"B 1234 CD\", \"brand\": \"Toyota\", \"model\": \"Avanza\"}"
+        },
+        "url": "{{baseUrl}}/api/admin/vehicles"
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "token", "value": "" }
+  ]
+}

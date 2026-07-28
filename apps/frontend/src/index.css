@@ -1,0 +1,205 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #F8FAFC;
+    color: #0F172A;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  /* Sidebar navigation */
+  .sidebar-nav-item {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-all duration-200 cursor-pointer;
+  }
+
+  .sidebar-nav-item.active {
+    @apply text-white bg-blue-900/80;
+  }
+
+  /* Card styles */
+  .admin-card {
+    @apply bg-white rounded-xl border border-slate-100 shadow-card;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover active:scale-95 transition-all duration-200;
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 text-sm font-medium rounded-lg border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all duration-200;
+  }
+
+  /* Danger button */
+  .btn-danger {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 active:scale-95 transition-all duration-200;
+  }
+
+  /* Green action button (e.g. "Hubungi") */
+  .btn-green {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 active:scale-95 transition-all duration-200;
+  }
+
+  /* Input */
+  .form-input {
+    @apply w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all duration-200 bg-white;
+  }
+
+  /* Select */
+  .form-select {
+    @apply form-input appearance-none cursor-pointer;
+  }
+
+  /* Table header cell */
+  .th-cell {
+    @apply px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide;
+  }
+
+  /* Table data cell */
+  .td-cell {
+    @apply px-4 py-3.5 text-sm text-slate-700;
+  }
+
+  /* Badge base */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-submitted {
+    @apply badge bg-green-100 text-green-700;
+  }
+
+  .badge-pending {
+    @apply badge bg-amber-100 text-amber-700;
+  }
+
+  .badge-incomplete {
+    @apply badge bg-slate-100 text-slate-600;
+  }
+
+  .badge-needs-repair {
+    @apply badge bg-red-100 text-red-700;
+  }
+
+  .badge-active {
+    @apply badge bg-green-100 text-green-700;
+  }
+
+  .badge-inactive {
+    @apply badge bg-slate-100 text-slate-500;
+  }
+
+  .badge-admin {
+    @apply badge bg-blue-100 text-blue-700;
+  }
+
+  .badge-driver {
+    @apply badge bg-indigo-100 text-indigo-700;
+  }
+
+  .badge-shared {
+    @apply badge bg-purple-100 text-purple-700;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #CBD5E1;
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+input:checked + .toggle-slider {
+  background-color: #2563EB;
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
