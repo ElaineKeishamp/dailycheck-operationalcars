@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const userModel = require('../models/user.model');
 const vehicleModel = require('../models/vehicle.model');
 const dailyCheckModel = require('../models/dailyCheck.model');
+const storageService = require('../services/storage.service');
 
 async function resetPassword(req, res) {
   const { id } = req.params;
@@ -61,9 +62,26 @@ async function getReportDetail(req, res) {
 
     const photos = await dailyCheckModel.getPhotosByDailyId(id);
 
+    const photosWithUrls = await Promise.all(
+      photos.map(async (photo) => {
+        let viewUrl = null;
+        try {
+          if (photo.r2_key) {
+            viewUrl = await storageService.generateViewPresignedUrl(photo.r2_key);
+          }
+        } catch {
+          viewUrl = null;
+        }
+        return {
+          ...photo,
+          url: viewUrl,
+        };
+      })
+    );
+
     res.json({
       report,
-      photos,
+      photos: photosWithUrls,
     });
   } catch (err) {
     console.error(err);
