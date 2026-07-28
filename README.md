@@ -17,9 +17,28 @@ Panduan singkat untuk menjalankan project lokal (backend + frontend) agar tim fr
 PORT=3000
 DATABASE_URL=postgresql://postgres:password@localhost:5432/dailycheck_dev
 JWT_SECRET=rahasia_tes
+
+# MinIO Object Storage
+S3_ENDPOINT=http://localhost:9000
+S3_REGION=us-east-1
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_BUCKET_NAME=dailycheck-photos
 ```
 
-- Frontend: tambahkan `VITE_API_URL` jika backend tidak dijalankan di `http://localhost:3000`.
+## MinIO Object Storage (Lokal & Testing)
+1. **Jalankan MinIO Server**:
+   ```bash
+   minio.exe server C:\minio-data --console-address ":9001"
+   ```
+   * S3 API: `http://localhost:9000`
+   * Web Dashboard: `http://localhost:9001` (Credentials: `minioadmin` / `minioadmin`)
+
+2. **Uji Coba Otomatis MinIO (Upload & Presigned View URL)**:
+   ```bash
+   cd apps/backend
+   node test-minio.js
+   ```
 
 ## Menjalankan backend (dev)
 

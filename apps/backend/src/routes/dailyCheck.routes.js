@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middlewares/auth');
-const { startDailyCheck, uploadPhoto, submitDailyCheck } = require('../controllers/dailyCheck.controller');
+const { startDailyCheck, getPhotoUploadUrl, uploadPhoto, submitDailyCheck } = require('../controllers/dailyCheck.controller');
 const { body, param } = require('express-validator');
 const validate = require('../middlewares/validate');
 
@@ -21,12 +21,26 @@ router.post(
 	startDailyCheck
 );
 
+// Minta Presigned Upload URL ke MinIO
+router.post(
+	'/:dailyCheckId/photo-url',
+	verifyToken,
+	[
+		param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'),
+		body('part_type').notEmpty().isIn(VALID_PART_TYPES).withMessage('part_type tidak valid'),
+		validate,
+	],
+	getPhotoUploadUrl
+);
+
+// Konfirmasi Simpan Record Foto ke PostgreSQL setelah Upload MinIO selesai
 router.post(
 	'/:dailyCheckId/photos',
 	verifyToken,
 	[
 		param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'),
 		body('part_type').notEmpty().isIn(VALID_PART_TYPES).withMessage('part_type tidak valid'),
+		body('key').optional().isString(),
 		body('note').optional().isString(),
 		validate,
 	],
@@ -34,6 +48,5 @@ router.post(
 );
 
 router.post('/:dailyCheckId/submit', verifyToken, [param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'), validate], submitDailyCheck);
-
 
 module.exports = router;

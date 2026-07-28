@@ -150,6 +150,70 @@ Upload foto per bagian mobil. Dipanggil berkali-kali (1 kali per foto).
 
 ---
 
+## Alur Upload Foto MinIO (Driver)
+
+1. **Minta Presigned Upload URL**: Driver panggil `POST /daily-checks/:dailyCheckId/photo-url` dengan `{ "part_type": "odo" }`. Backend merespon `upload_url` & `key`.
+2. **Upload File ke MinIO**: Driver meng-upload file foto secara langsung ke MinIO menggunakan HTTP `PUT` ke `upload_url` tersebut (`headers: { "Content-Type": "image/webp" }`).
+3. **Simpan Metadata Foto**: Driver panggil `POST /daily-checks/:dailyCheckId/photos` dengan `{ "part_type": "odo", "key": "key_dari_step_1" }` untuk menyimpan data foto ke database.
+
+---
+
+## POST /daily-checks/:dailyCheckId/photo-url
+Minta Presigned Upload URL ke MinIO Object Storage untuk mengunggah foto.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request Body:**
+```json
+{
+  "part_type": "odo",
+  "content_type": "image/webp"
+}
+```
+
+**Response Sukses (200):**
+```json
+{
+  "upload_url": "http://localhost:9000/dailycheck-photos/inspections/2026/uuid/odo_12345.webp?X-Amz-Algorithm=...",
+  "key": "inspections/2026/uuid/odo_12345.webp",
+  "part_type": "odo",
+  "expires_in": 300
+}
+```
+
+---
+
+## POST /daily-checks/:dailyCheckId/photos
+Konfirmasi pendaftaran foto setelah berhasil di-upload ke MinIO.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request Body:**
+```json
+{
+  "part_type": "odo",
+  "key": "inspections/2026/uuid/odo_12345.webp",
+  "note": "Kondisi baik, lecet halus"
+}
+```
+
+**Response Sukses (201):**
+```json
+{
+  "photo": {
+    "check_photos_id": "uuid",
+    "daily_id": "uuid",
+    "part_type": "odo",
+    "r2_key": "inspections/2026/uuid/odo_12345.webp",
+    "thumbnail_key": "thumb_inspections/2026/uuid/odo_12345.webp",
+    "note": "Kondisi baik, lecet halus",
+    "url": "http://localhost:9000/dailycheck-photos/inspections/2026/uuid/odo_12345.webp?X-Amz-..."
+  }
+}
+```
+
+---
+
 ## POST /daily-checks/:dailyCheckId/submit
 Submit laporan setelah semua foto wajib terupload.
 

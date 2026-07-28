@@ -1,6 +1,7 @@
 const userModel = require('../models/user.model');
 const vehicleModel = require('../models/vehicle.model');
 const dailyCheckModel = require('../models/dailyCheck.model');
+const storageService = require('../services/storage.service');
 
 async function startDailyCheck(req, res) {
   const { vehicle_id, actual_driver_name, gps_lat, gps_long, gps_address } = req.body;
@@ -43,9 +44,12 @@ async function startDailyCheck(req, res) {
   }
 }
 
-async function uploadPhoto(req, res) {
+/**
+ * Generate Presigned Upload URL for Driver to upload photo directly to MinIO
+ */
+async function getPhotoUploadUrl(req, res) {
   const { dailyCheckId } = req.params;
-  const { part_type, note } = req.body;
+  const { part_type, content_type } = req.body;
 
   const validPartTypes = ['odo', 'body_kiri', 'body_kanan', 'kap', 'depan', 'belakang', 'interior', 'ban', 'lainnya'];
 
@@ -59,19 +63,63 @@ async function uploadPhoto(req, res) {
       return res.status(404).json({ error: 'Daily check tidak ditemukan' });
     }
 
+    const year = new Date().getFullYear();
     const timestamp = Date.now();
-    const dummyKey = `dummy/${req.user.id}/${part_type}_${timestamp}.webp`;
-    const dummyThumbKey = `dummy/${req.user.id}/thumb_${part_type}_${timestamp}.webp`;
+    const key = `inspections/${year}/${dailyCheckId}/${part_type}_${timestamp}.webp`;
+    const mimeType = content_type || 'image/webp';
+
+    const { uploadUrl, expiresIn } = await storageService.generateUploadPresignedUrl(key, mimeType, 300);
+
+    res.json({
+      upload_url: uploadUrl,
+      key,
+      part_type,
+      expires_in: expiresIn,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Terjadi kesalahan server' });
+  }
+}
+
+/**
+ * Confirm photo record after client finishes uploading to MinIO
+ */
+async function uploadPhoto(req, res) {
+  const { dailyCheckId } = req.params;
+  const { part_type, key, r2_key, note } = req.body;
+
+  const validPartTypes = ['odo', 'body_kiri', 'body_kanan', 'kap', 'depan', 'belakang', 'interior', 'ban', 'lainnya'];
+
+  if (!part_type || !validPartTypes.includes(part_type)) {
+    return res.status(400).json({ error: 'part_type tidak valid' });
+  }
+
+  try {
+    const dailyCheck = await dailyCheckModel.findByIdAndUser(dailyCheckId, req.user.id);
+    if (!dailyCheck) {
+      return res.status(404).json({ error: 'Daily check tidak ditemukan' });
+    }
+
+    const fileKey = key || r2_key || `inspections/${new Date().getFullYear()}/${dailyCheckId}/${part_type}_${Date.now()}.webp`;
+    const thumbnailKey = `thumb_${fileKey}`;
 
     const photo = await dailyCheckModel.addPhoto({
       daily_id: dailyCheckId,
       part_type,
-      r2_key: dummyKey,
-      thumbnail_key: dummyThumbKey,
+      r2_key: fileKey,
+      thumbnail_key: thumbnailKey,
       note,
     });
 
-    res.status(201).json({ photo });
+    const viewUrl = await storageService.generateViewPresignedUrl(fileKey);
+
+    res.status(201).json({
+      photo: {
+        ...photo,
+        url: viewUrl,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Terjadi kesalahan server' });
@@ -122,4 +170,4 @@ async function submitDailyCheck(req, res) {
   }
 }
 
-module.exports = { startDailyCheck, uploadPhoto, submitDailyCheck };
+module.exports = { startDailyCheck, getPhotoUploadUrl, uploadPhoto, submitDailyCheck };
