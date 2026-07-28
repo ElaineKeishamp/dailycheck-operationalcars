@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ChecklistProgress from '../../components/driver/ChecklistProgress';
 import DriverHeader from '../../components/driver/DriverHeader';
 import OptionalPhotoCard from '../../components/driver/OptionalPhotoCard';
@@ -7,13 +7,59 @@ import SubmitReportSection from '../../components/driver/SubmitReportSection';
 import TireChecklistGrid from '../../components/driver/TireChecklistGrid';
 import VehicleSelectionCard from '../../components/driver/VehicleSelectionCard';
 import { STANDARD_PHOTO_ITEMS, REQUIRED_CHECKLIST_TOTAL } from '../../config/driverChecklist';
-import { TEMPORARY_VEHICLES } from '../../config/driverVehicles';
 import { useAuth } from '../../context/useAuth';
+import { useDriverVehicles } from '../../hooks/useDriverVehicles';
+import { useGeolocation } from '../../hooks/useGeolocation';
+import { canStartDriverChecking } from '../../utils/driverPreparation';
 
 export default function DriverDashboardPage() {
   const { user } = useAuth();
-  const [selectedVehicleId, setSelectedVehicleId] = useState(TEMPORARY_VEHICLES[0]?.id || '');
-  const [sharedDriverName, setSharedDriverName] = useState('');
+  const {
+    vehicles,
+    loading: vehiclesLoading,
+    error: vehiclesError,
+    retry: retryVehicles,
+  } = useDriverVehicles();
+  const {
+    status: locationStatus,
+    coordinates,
+    requestLocation,
+    errorMessage: locationErrorMessage,
+  } = useGeolocation({ requestOnMount: true });
+
+  const [selectedVehicleId, setSelectedVehicleId] = useState('');
+  const [actualDriverName, setActualDriverName] = useState('');
+  const [preparationMessage, setPreparationMessage] = useState(null);
+  const isSharedAccount = Boolean(user?.is_shared_account);
+
+  const canStartChecking = canStartDriverChecking({
+    selectedVehicleId,
+    isSharedAccount,
+    actualDriverName,
+    locationStatus,
+    coordinates,
+    vehiclesLoading,
+    vehiclesError,
+  });
+
+  useEffect(() => {
+    if (!selectedVehicleId) return;
+
+    const selectedVehicleExists = vehicles.some((vehicle) => vehicle.vehicle_id === selectedVehicleId);
+    if (!selectedVehicleExists) {
+      setSelectedVehicleId('');
+    }
+  }, [selectedVehicleId, vehicles]);
+
+  useEffect(() => {
+    setPreparationMessage(null);
+  }, [actualDriverName, coordinates, locationStatus, selectedVehicleId, vehiclesError, vehiclesLoading]);
+
+  const handlePrepareStartChecking = () => {
+    if (!canStartChecking) return;
+
+    setPreparationMessage('Data kendaraan dan lokasi sudah siap. Sesi checking akan dibuat pada tahap berikutnya.');
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -22,11 +68,22 @@ export default function DriverDashboardPage() {
           <DriverHeader />
 
           <VehicleSelectionCard
+            vehicles={vehicles}
+            vehiclesLoading={vehiclesLoading}
+            vehiclesError={vehiclesError}
             selectedVehicleId={selectedVehicleId}
             onVehicleChange={setSelectedVehicleId}
-            isSharedAccount={Boolean(user?.is_shared_account)}
-            driverName={sharedDriverName}
-            onDriverNameChange={setSharedDriverName}
+            onRetryVehicles={retryVehicles}
+            locationStatus={locationStatus}
+            coordinates={coordinates}
+            locationErrorMessage={locationErrorMessage}
+            onRetryLocation={requestLocation}
+            isSharedAccount={isSharedAccount}
+            actualDriverName={actualDriverName}
+            onActualDriverNameChange={setActualDriverName}
+            canStartChecking={canStartChecking}
+            onPrepareStartChecking={handlePrepareStartChecking}
+            preparationMessage={preparationMessage}
           />
 
           <ChecklistProgress completedCount={0} totalCount={REQUIRED_CHECKLIST_TOTAL} />

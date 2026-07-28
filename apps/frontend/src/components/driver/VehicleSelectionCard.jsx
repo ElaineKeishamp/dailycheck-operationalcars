@@ -1,13 +1,32 @@
 import { PlayCircle } from 'lucide-react';
-import { TEMPORARY_VEHICLES } from '../../config/driverVehicles';
+import LocationPermissionStatus from './LocationPermissionStatus';
+
+function getVehicleOptionLabel(vehicle) {
+  return `${vehicle.plate_number} - ${vehicle.brand} ${vehicle.model}`;
+}
 
 export default function VehicleSelectionCard({
+  vehicles,
+  vehiclesLoading,
+  vehiclesError,
   selectedVehicleId,
   onVehicleChange,
+  onRetryVehicles,
+  locationStatus,
+  coordinates,
+  locationErrorMessage,
+  onRetryLocation,
   isSharedAccount,
-  driverName,
-  onDriverNameChange,
+  actualDriverName,
+  onActualDriverNameChange,
+  canStartChecking,
+  onPrepareStartChecking,
+  preparationMessage,
 }) {
+  const hasVehicleError = Boolean(vehiclesError);
+  const hasNoVehicles = !vehiclesLoading && !hasVehicleError && vehicles.length === 0;
+  const selectDisabled = vehiclesLoading || hasVehicleError || hasNoVehicles;
+
   return (
     <section className="bg-white border border-slate-100 rounded-xl shadow-card p-4">
       <h2 className="text-base font-bold text-slate-900 mb-4">Data Mobil</h2>
@@ -22,13 +41,36 @@ export default function VehicleSelectionCard({
             className="form-select min-h-11"
             value={selectedVehicleId}
             onChange={(e) => onVehicleChange(e.target.value)}
+            disabled={selectDisabled}
           >
-            {TEMPORARY_VEHICLES.map((vehicle) => (
-              <option key={vehicle.id} value={vehicle.id}>
-                {vehicle.plateNumber} - {vehicle.model}
+            {vehiclesLoading && <option value="">Memuat data kendaraan...</option>}
+            {hasVehicleError && <option value="">Gagal memuat kendaraan</option>}
+            {hasNoVehicles && <option value="">Belum ada kendaraan aktif</option>}
+            {!selectDisabled && <option value="">Pilih kendaraan</option>}
+            {!selectDisabled && vehicles.map((vehicle) => (
+              <option key={vehicle.vehicle_id} value={vehicle.vehicle_id}>
+                {getVehicleOptionLabel(vehicle)}
               </option>
             ))}
           </select>
+          {vehiclesLoading && (
+            <p className="mt-1.5 text-xs text-slate-500" aria-live="polite">Memuat daftar kendaraan aktif...</p>
+          )}
+          {vehiclesError && (
+            <div className="mt-2 rounded-lg border border-red-100 bg-red-50 p-3" role="status" aria-live="polite">
+              <p className="text-sm text-red-600">{vehiclesError}</p>
+              <button
+                type="button"
+                onClick={onRetryVehicles}
+                className="mt-3 min-h-10 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50"
+              >
+                Coba Lagi
+              </button>
+            </div>
+          )}
+          {hasNoVehicles && (
+            <p className="mt-1.5 text-xs text-slate-500" aria-live="polite">Belum ada kendaraan aktif yang tersedia.</p>
+          )}
         </div>
 
         {isSharedAccount && (
@@ -41,22 +83,40 @@ export default function VehicleSelectionCard({
               type="text"
               className="form-input min-h-11"
               placeholder="Masukkan nama..."
-              value={driverName}
-              onChange={(e) => onDriverNameChange(e.target.value)}
+              value={actualDriverName}
+              onChange={(e) => onActualDriverNameChange(e.target.value)}
             />
             <p className="mt-1.5 text-xs text-slate-500">Isi nama Anda karena ini akun bersama</p>
           </div>
         )}
 
+        <LocationPermissionStatus
+          status={locationStatus}
+          coordinates={coordinates}
+          errorMessage={locationErrorMessage}
+          onRetry={onRetryLocation}
+        />
+
+        {preparationMessage && (
+          <div className="rounded-lg border border-blue-100 bg-blue-50 p-3" role="status" aria-live="polite">
+            <p className="text-sm text-blue-700">{preparationMessage}</p>
+          </div>
+        )}
+
         <button
           type="button"
-          disabled
-          className="w-full min-h-11 rounded-lg bg-slate-200 text-slate-500 text-sm font-semibold inline-flex items-center justify-center gap-2 cursor-not-allowed"
+          disabled={!canStartChecking}
+          onClick={onPrepareStartChecking}
+          className={`w-full min-h-11 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors ${
+            canStartChecking
+              ? 'bg-primary text-white hover:bg-primary-hover'
+              : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+          }`}
         >
           <PlayCircle size={18} aria-hidden="true" />
           Mulai Checking
         </button>
-        {/* Vehicle session start will be enabled in the vehicle/geolocation phase. */}
+        {/* POST /daily-checks will be connected in Phase 4. */}
       </div>
     </section>
   );
