@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AdminRoute, ChangePasswordRoute, DriverRoute, GuestRoute } from './components/ProtectedRoute';
+import OfflineNotice from './components/pwa/OfflineNotice';
+import PwaInstallPrompt from './components/pwa/PwaInstallPrompt';
+import PwaUpdatePrompt from './components/pwa/PwaUpdatePrompt';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -20,6 +23,9 @@ import AdminVehiclesPage from './pages/admin/AdminVehiclesPage';
 export default function App() {
   return (
     <AuthProvider>
+      <OfflineNotice />
+      <PwaUpdatePrompt />
+      <PwaInstallPrompt />
       <BrowserRouter>
         <Routes>
           <Route

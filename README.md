@@ -62,6 +62,26 @@ npm run dev
 
 Frontend akan memanggil API pada `VITE_API_URL` atau fallback ke `http://localhost:3000/api`.
 
+## PWA installability
+
+Frontend dapat dibangun sebagai Progressive Web App yang installable. Implementasi saat ini online-first:
+
+- App shell dan asset statis build dapat di-cache oleh service worker.
+- Login, data kendaraan, daily check, upload foto MinIO, dan submit laporan tetap membutuhkan koneksi internet.
+- Tidak ada offline upload queue, IndexedDB, background sync, push notification, atau cache response API.
+
+Build dan uji preview production:
+
+```bash
+cd apps/frontend
+npm run build
+npm run preview
+```
+
+Gunakan preview production untuk memeriksa manifest, service worker, install prompt, dan update prompt. Pada localhost, service worker dapat diuji langsung di Chrome. Untuk perangkat nyata atau deployment, gunakan HTTPS supaya kamera, geolocation, dan PWA installability bekerja sesuai kebijakan browser.
+
+Jika service worker lama mengganggu pengujian, buka Chrome DevTools -> Application -> Service Workers, pilih Unregister, lalu buka Cache Storage dan hapus cache aplikasi terkait sebelum reload.
+
 ## Branch & cara kerja tim
 - Kode fitur validation ada di branch `feature/validation`. Minta rekan frontend untuk checkout branch itu:
 
