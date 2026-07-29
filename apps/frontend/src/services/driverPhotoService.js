@@ -1,12 +1,16 @@
 import apiClient from '../api/client';
 
-function createSafeFilename(draft) {
-  const baseName = String(draft?.checklistId || draft?.partType || 'foto')
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+const UPLOAD_PREPARE_FAILED = 'UPLOAD_PREPARE_FAILED';
+const UPLOAD_STORAGE_FAILED = 'UPLOAD_STORAGE_FAILED';
+const UPLOAD_CONFIRM_FAILED = 'UPLOAD_CONFIRM_FAILED';
 
-  return `daily-check-${baseName || 'foto'}.jpg`;
+function withCode(error, code) {
+  const wrappedError = new Error(error?.message || 'Upload foto gagal');
+  wrappedError.code = code;
+  wrappedError.name = error?.name || wrappedError.name;
+  wrappedError.response = error?.response;
+  wrappedError.cause = error;
+  return wrappedError;
 }
 
 function normalizeUploadedPhoto(responsePhoto) {
@@ -19,12 +23,94 @@ function normalizeUploadedPhoto(responsePhoto) {
   }
 
   return {
+    check_photos_id: responsePhoto.check_photos_id,
     checkPhotosId: responsePhoto.check_photos_id,
+    daily_id: responsePhoto.daily_id,
+    dailyId: responsePhoto.daily_id,
+    part_type: responsePhoto.part_type,
     partType: responsePhoto.part_type,
+    part_index: responsePhoto.part_index ?? null,
+    partIndex: responsePhoto.part_index ?? null,
+    r2_key: responsePhoto.r2_key,
     r2Key: responsePhoto.r2_key,
+    thumbnail_key: responsePhoto.thumbnail_key,
     thumbnailKey: responsePhoto.thumbnail_key,
+    note: responsePhoto.note || '',
+    created_at: responsePhoto.created_at,
+    createdAt: responsePhoto.created_at,
     raw: responsePhoto,
   };
+}
+
+function getContentType(draft) {
+  const type = draft?.blob?.type || 'image/jpeg';
+  return ['image/jpeg', 'image/png', 'image/webp'].includes(type) ? type : 'image/jpeg';
+}
+
+async function requestPhotoUploadUrl({ dailyCheckId, draft, contentType, signal }) {
+  try {
+    const response = await apiClient.post(
+      `/daily-checks/${dailyCheckId}/photo-url`,
+      {
+        part_type: draft.partType,
+        part_index: draft.partIndex ?? null,
+        content_type: contentType,
+      },
+      { signal },
+    );
+
+    if (!response.data?.upload_url || !response.data?.key) {
+      throw new Error('Response upload URL tidak valid');
+    }
+
+    return {
+      uploadUrl: response.data.upload_url,
+      key: response.data.key,
+      expiresIn: response.data.expires_in,
+    };
+  } catch (error) {
+    throw withCode(error, UPLOAD_PREPARE_FAILED);
+  }
+}
+
+async function uploadPhotoToPresignedUrl({ uploadUrl, blob, contentType, signal }) {
+  let response;
+
+  try {
+    response = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType,
+      },
+      body: blob,
+      signal,
+    });
+  } catch (error) {
+    throw withCode(error, UPLOAD_STORAGE_FAILED);
+  }
+
+  if (!response.ok) {
+    throw withCode(new Error('MinIO upload gagal'), UPLOAD_STORAGE_FAILED);
+  }
+}
+
+async function confirmDailyCheckPhoto({ dailyCheckId, draft, key, signal }) {
+  try {
+    const response = await apiClient.post(
+      `/daily-checks/${dailyCheckId}/photos`,
+      {
+        part_type: draft.partType,
+        part_index: draft.partIndex ?? null,
+        key,
+        note: draft.note || undefined,
+      },
+      { signal },
+    );
+
+    return normalizeUploadedPhoto(response.data?.photo);
+  } catch (error) {
+    throw withCode(error, UPLOAD_CONFIRM_FAILED);
+  }
 }
 
 export async function uploadDailyCheckPhoto({ dailyCheckId, draft, signal }) {
@@ -36,20 +122,41 @@ export async function uploadDailyCheckPhoto({ dailyCheckId, draft, signal }) {
     throw new Error('File foto lokal tidak ditemukan');
   }
 
-  const formData = new FormData();
-  const photoFile = new File(
-    [draft.blob],
-    createSafeFilename(draft),
-    { type: draft.blob.type || 'image/jpeg' },
-  );
+  const contentType = getContentType(draft);
+  const { uploadUrl, key } = await requestPhotoUploadUrl({
+    dailyCheckId,
+    draft,
+    contentType,
+    signal,
+  });
 
-  formData.append('photo', photoFile);
-  formData.append('part_type', draft.partType);
+  await uploadPhotoToPresignedUrl({
+    uploadUrl,
+    blob: draft.blob,
+    contentType,
+    signal,
+  });
 
-  if (draft.note?.trim()) {
-    formData.append('note', draft.note.trim());
+  return confirmDailyCheckPhoto({
+    dailyCheckId,
+    draft,
+    key,
+    signal,
+  });
+}
+
+export async function getDailyCheckPhotos({ dailyCheckId, signal }) {
+  if (!dailyCheckId) {
+    throw new Error('Sesi daily check belum tersedia');
   }
 
-  const response = await apiClient.post(`/daily-checks/${dailyCheckId}/photos`, formData, { signal });
-  return normalizeUploadedPhoto(response.data?.photo);
+  const response = await apiClient.get(`/daily-checks/${dailyCheckId}/photos`, { signal });
+  const photos = Array.isArray(response.data?.photos) ? response.data.photos : [];
+  return photos.filter((photo) => photo?.check_photos_id).map(normalizeUploadedPhoto);
 }
+
+export {
+  UPLOAD_CONFIRM_FAILED,
+  UPLOAD_PREPARE_FAILED,
+  UPLOAD_STORAGE_FAILED,
+};

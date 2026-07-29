@@ -1,15 +1,41 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { STANDARD_PHOTO_ITEMS, TIRE_CHECKLIST_ITEMS } from '../config/driverChecklist';
-import { uploadDailyCheckPhoto } from '../services/driverPhotoService';
+import {
+  getDailyCheckPhotos,
+  UPLOAD_CONFIRM_FAILED,
+  UPLOAD_PREPARE_FAILED,
+  UPLOAD_STORAGE_FAILED,
+  uploadDailyCheckPhoto,
+} from '../services/driverPhotoService';
 
 const REQUIRED_CHECKLIST_IDS = new Set([
   ...STANDARD_PHOTO_ITEMS.map((item) => item.id),
   ...TIRE_CHECKLIST_ITEMS.map((item) => item.id),
 ]);
 
+function getChecklistIdForUploadedPhoto(photo) {
+  if (!photo?.partType) return null;
+  if (photo.partType === 'ban') {
+    return Number.isInteger(photo.partIndex) && photo.partIndex >= 1 && photo.partIndex <= 4
+      ? `ban_${photo.partIndex}`
+      : null;
+  }
+  return photo.partType;
+}
+
 function getUploadErrorMessage(error) {
   if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
     return 'Upload foto dibatalkan';
+  }
+
+  if (error?.code === UPLOAD_PREPARE_FAILED) {
+    return 'Gagal menyiapkan upload foto. Silakan coba lagi.';
+  }
+  if (error?.code === UPLOAD_STORAGE_FAILED) {
+    return 'Foto gagal dikirim ke penyimpanan. Silakan coba lagi.';
+  }
+  if (error?.code === UPLOAD_CONFIRM_FAILED) {
+    return 'Foto terkirim, tetapi gagal dikonfirmasi. Silakan coba lagi.';
   }
 
   const status = error?.response?.status;
@@ -27,10 +53,16 @@ function getUploadErrorMessage(error) {
 
 export function usePhotoUploads() {
   const [uploadStates, setUploadStates] = useState({});
+  const [restoreStatus, setRestoreStatus] = useState('idle');
+  const [restoreError, setRestoreError] = useState(null);
   const controllersRef = useRef({});
   const mountedRef = useRef(true);
+  const activeDailyCheckIdRef = useRef(null);
+  const restoreRequestIdRef = useRef(0);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     return () => {
       mountedRef.current = false;
       Object.values(controllersRef.current).forEach((controller) => controller.abort());
@@ -93,6 +125,35 @@ export function usePhotoUploads() {
         return;
       }
 
+      const isDuplicateUploadedSlot = error?.response?.status === 409
+        && error?.response?.data?.error === 'Foto bagian ini sudah diupload';
+      if (isDuplicateUploadedSlot) {
+        try {
+          const photos = await getDailyCheckPhotos({ dailyCheckId, signal: controller.signal });
+          if (!mountedRef.current) return;
+          const restoredPhoto = photos.find((photo) => getChecklistIdForUploadedPhoto(photo) === checklistId);
+          if (restoredPhoto) {
+            setUploadStates((current) => ({
+              ...current,
+              [checklistId]: {
+                status: 'uploaded',
+                uploadedPhoto: restoredPhoto,
+                errorMessage: null,
+              },
+            }));
+            return;
+          }
+        } catch (restoreErrorAfterConflict) {
+          if (
+            !mountedRef.current
+            || restoreErrorAfterConflict?.name === 'CanceledError'
+            || restoreErrorAfterConflict?.name === 'AbortError'
+          ) {
+            return;
+          }
+        }
+      }
+
       setUploadStates((current) => ({
         ...current,
         [checklistId]: {
@@ -110,10 +171,79 @@ export function usePhotoUploads() {
     uploadPhoto({ dailyCheckId, draft });
   }, [uploadPhoto]);
 
+  const restoreUploadedPhotos = useCallback((photos) => {
+    setUploadStates((current) => {
+      const next = { ...current };
+
+      photos.forEach((photo) => {
+        const checklistId = getChecklistIdForUploadedPhoto(photo);
+        if (!checklistId) return;
+
+        next[checklistId] = {
+          status: 'uploaded',
+          uploadedPhoto: photo,
+          errorMessage: null,
+        };
+      });
+
+      return next;
+    });
+  }, []);
+
+  const loadUploadedPhotos = useCallback(async ({ dailyCheckId, signal }) => {
+    if (!dailyCheckId) return [];
+
+    const requestId = restoreRequestIdRef.current + 1;
+    restoreRequestIdRef.current = requestId;
+
+    if (activeDailyCheckIdRef.current !== dailyCheckId) {
+      activeDailyCheckIdRef.current = dailyCheckId;
+      Object.values(controllersRef.current).forEach((controller) => controller.abort());
+      controllersRef.current = {};
+      setUploadStates({});
+    }
+
+    setRestoreStatus('loading');
+    setRestoreError(null);
+
+    try {
+      const photos = await getDailyCheckPhotos({ dailyCheckId, signal });
+      if (
+        !mountedRef.current
+        || requestId !== restoreRequestIdRef.current
+        || activeDailyCheckIdRef.current !== dailyCheckId
+      ) {
+        return [];
+      }
+
+      restoreUploadedPhotos(photos);
+      setRestoreStatus('success');
+      setRestoreError(null);
+      return photos;
+    } catch (error) {
+      if (
+        error?.name === 'CanceledError'
+        || error?.name === 'AbortError'
+        || requestId !== restoreRequestIdRef.current
+        || activeDailyCheckIdRef.current !== dailyCheckId
+      ) {
+        return [];
+      }
+
+      setRestoreStatus('error');
+      setRestoreError('Sesi berhasil dibuka, tetapi status foto gagal dimuat.');
+      throw error;
+    }
+  }, [restoreUploadedPhotos]);
+
   const clearUploads = useCallback(() => {
     Object.values(controllersRef.current).forEach((controller) => controller.abort());
     controllersRef.current = {};
+    activeDailyCheckIdRef.current = null;
+    restoreRequestIdRef.current += 1;
     setUploadStates({});
+    setRestoreStatus('idle');
+    setRestoreError(null);
   }, []);
 
   const uploadedRequiredCount = useMemo(() => {
@@ -134,8 +264,12 @@ export function usePhotoUploads() {
 
   return {
     uploadStates,
+    restoreStatus,
+    restoreError,
     uploadPhoto,
     retryUpload,
+    restoreUploadedPhotos,
+    loadUploadedPhotos,
     isUploadingAny,
     hasUploadFailures,
     uploadedRequiredCount,
