@@ -1,6 +1,6 @@
 # Driver Flow QA Checklist
 
-Use this checklist for focused regression passes on the driver daily-check flow. It intentionally avoids admin-only behavior, offline/PWA behavior, and photo replace/delete flows.
+Use this checklist for focused regression passes on the driver daily-check flow. It intentionally avoids admin-only behavior except where driver deletion lockout needs a submitted report.
 
 ## Start Session
 
@@ -25,6 +25,16 @@ Use this checklist for focused regression passes on the driver daily-check flow.
 - Simulate a failed upload and confirm retry is available without enabling submit.
 - Confirm the frontend uses the presigned URL flow and does not send `multipart/form-data`.
 
+## Delete Uploaded Photo And Retake
+
+- Upload one required photo, choose `Hapus & Ambil Ulang`, cancel the confirmation, and confirm the uploaded slot remains complete.
+- Confirm deletion shows a loading state and the slot only becomes incomplete after the backend responds successfully.
+- Confirm the deleted slot can be captured and uploaded again through the normal camera flow.
+- Refresh the page after deletion and confirm the deleted photo is not restored from the backend.
+- Go offline, try to delete an uploaded photo, and confirm the UI keeps the uploaded photo and shows a clear Indonesian error.
+- Submit the report, then confirm uploaded photos cannot be deleted from the driver page.
+- Confirm there is no admin-facing delete-photo control.
+
 ## Submit
 
 - Confirm submit remains disabled while photos are loading, uploading, failed, or incomplete.
@@ -37,5 +47,7 @@ Use this checklist for focused regression passes on the driver daily-check flow.
 
 - Open the camera overlay and confirm keyboard focus moves into it and returns after close.
 - Open the submit confirmation dialog and confirm keyboard focus moves into it and returns after close.
+- Open the delete-photo confirmation dialog and confirm keyboard focus moves into it and returns after close.
 - Confirm Escape closes the submit dialog when it is not submitting.
+- Confirm Escape closes the delete-photo dialog when it is not deleting.
 - Check a narrow mobile viewport for clipped labels, overlapping sticky submit controls, and unusable buttons.

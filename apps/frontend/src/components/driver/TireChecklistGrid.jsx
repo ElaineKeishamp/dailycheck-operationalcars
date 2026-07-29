@@ -1,4 +1,4 @@
-import { Camera, CheckCircle2, CircleDotDashed, Loader2, RefreshCw, TriangleAlert } from 'lucide-react';
+import { Camera, CheckCircle2, CircleDotDashed, Loader2, RefreshCw, Trash2, TriangleAlert } from 'lucide-react';
 import { TIRE_CHECKLIST_ITEMS } from '../../config/driverChecklist';
 
 function getStatusConfig({ isCaptured, uploadState }) {
@@ -9,7 +9,15 @@ function getStatusConfig({ isCaptured, uploadState }) {
   return { label: 'Belum', tone: 'empty' };
 }
 
-export default function TireChecklistGrid({ photoDrafts, disabled, uploadStates, onOpenCamera, onRetryUpload }) {
+export default function TireChecklistGrid({
+  photoDrafts,
+  disabled,
+  deleteDisabled = disabled,
+  uploadStates,
+  onOpenCamera,
+  onRetryUpload,
+  onDeletePhoto,
+}) {
   return (
     <section>
       <h2 className="text-base font-bold text-slate-900 mb-3">Kondisi Ban</h2>
@@ -21,6 +29,7 @@ export default function TireChecklistGrid({ photoDrafts, disabled, uploadStates,
           const isUploading = status.tone === 'uploading';
           const isUploaded = status.tone === 'uploaded';
           const isFailed = status.tone === 'failed';
+          const isDeleting = Boolean(uploadState?.isDeleting);
           const successTone = isUploaded || status.tone === 'captured';
           const actionDisabled = disabled || isUploading || isUploaded;
           const draft = photoDrafts[item.id];
@@ -54,14 +63,34 @@ export default function TireChecklistGrid({ photoDrafts, disabled, uploadStates,
                 <p className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${
                   isFailed ? 'text-red-700' : isUploading ? 'text-blue-700' : successTone ? 'text-green-700' : 'text-slate-500'
                 }`}>
-                  {isUploading && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
-                  {isUploaded && <CheckCircle2 size={14} aria-hidden="true" />}
+                  {(isUploading || isDeleting) && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+                  {isUploaded && !isDeleting && <CheckCircle2 size={14} aria-hidden="true" />}
                   {isFailed && <TriangleAlert size={14} aria-hidden="true" />}
                   {!isCaptured && !isUploading && !isUploaded && !isFailed && <Camera size={14} aria-hidden="true" />}
                   {status.label}
                 </p>
                 {isUploaded && <p className="text-xs text-slate-500 mt-1">Foto sudah diupload</p>}
               </button>
+
+              {isUploaded && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => onDeletePhoto({
+                      checklistId: item.id,
+                      partType: 'ban',
+                      partIndex: item.partIndex,
+                      label: `${item.title} - ${item.label}`,
+                      isOptional: false,
+                    })}
+                    disabled={deleteDisabled || isDeleting}
+                    className="inline-flex min-h-8 w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isDeleting ? <Loader2 size={13} className="animate-spin" aria-hidden="true" /> : <Trash2 size={13} aria-hidden="true" />}
+                    {isDeleting ? 'Menghapus...' : 'Hapus'}
+                  </button>
+                </div>
+              )}
 
               {isFailed && (
                 <div className="mt-3 space-y-2">

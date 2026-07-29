@@ -9,6 +9,7 @@ const {
 	getPhotoUploadUrl,
 	uploadPhoto,
 	getDailyCheckPhotos,
+	deleteDailyCheckPhoto,
 	submitDailyCheck,
 } = require('../controllers/dailyCheck.controller');
 const { body, param, query } = require('express-validator');
@@ -77,6 +78,17 @@ router.get(
 	verifyToken,
 	[param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'), validate],
 	getDailyCheckPhotos
+);
+
+router.delete(
+	'/:dailyCheckId/photos/:photoId',
+	verifyToken,
+	[
+		param('dailyCheckId').isUUID().withMessage('dailyCheckId tidak valid'),
+		param('photoId').isUUID().withMessage('photoId tidak valid'),
+		validate,
+	],
+	deleteDailyCheckPhoto
 );
 
 router.post('/:dailyCheckId/submit', verifyToken, [param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'), validate], submitDailyCheck);

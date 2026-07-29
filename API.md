@@ -314,6 +314,41 @@ Jika belum ada foto:
 Endpoint ini hanya mengembalikan foto untuk daily check milik user yang sedang login.
 
 ---
+
+## DELETE /daily-checks/:dailyCheckId/photos/:photoId
+Driver menghapus foto yang sudah terupload sebelum laporan final dikirim.
+
+**Headers:** `Authorization: Bearer <token_driver>`
+
+Backend mengambil object key dari row `check_photos`, memverifikasi daily check masih milik driver login dan masih `incomplete`, menghapus object MinIO, lalu menghapus row database. Client tidak mengirim storage key pada endpoint ini.
+
+Delete dan submit mengambil row lock PostgreSQL pada `daily_checks` yang sama. Jika submit menang lebih dulu, delete menunggu lalu ditolak `409`. Jika delete menang lebih dulu, submit menunggu lalu memvalidasi ulang foto wajib dan gagal `400` bila slot wajib berkurang.
+
+**Response Sukses (200):**
+```json
+{
+  "message": "Foto berhasil dihapus. Silakan ambil ulang foto.",
+  "data": {
+    "check_photos_id": "uuid",
+    "daily_id": "uuid",
+    "part_type": "odo",
+    "part_index": null
+  }
+}
+```
+
+**Response gagal:**
+- `400` - `dailyCheckId` atau `photoId` tidak valid
+- `403` - user bukan driver
+- `404` - daily check/foto tidak ditemukan atau bukan milik driver login
+- `409` - laporan sudah disubmit, foto tidak dapat dihapus
+- `500` - kegagalan server/storage/database
+
+Setelah sukses, slot foto kembali kosong dan bisa memakai alur upload normal lagi. Mengirim DELETE kedua untuk `photoId` yang sama menghasilkan `404` karena row foto sudah tidak ada.
+
+MinIO `DeleteObject` bersifat aman untuk object yang sudah tidak ada, sehingga retry tetap bisa membersihkan row database bila percobaan sebelumnya berhasil menghapus object tetapi gagal menghapus row. Sistem tidak memakai distributed transaction; jika MinIO sukses lalu PostgreSQL gagal, row bisa sementara menunjuk object yang sudah hilang sampai retry berikutnya berhasil.
+
+---
 ## POST /daily-checks/:dailyCheckId/submit
 Submit laporan setelah semua sebelas foto wajib punya record `check_photos` yang sudah tersimpan.
 
