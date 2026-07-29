@@ -16,6 +16,7 @@ import { useAuth } from '../../context/useAuth';
 import { useDailyCheckSession } from '../../hooks/useDailyCheckSession';
 import { useDriverVehicles } from '../../hooks/useDriverVehicles';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { usePhotoChecklistDrafts } from '../../hooks/usePhotoChecklistDrafts';
 import { usePhotoUploads } from '../../hooks/usePhotoUploads';
 import { canStartDriverChecking } from '../../utils/driverPreparation';
@@ -36,6 +37,7 @@ function formatTime(dateStr) {
 
 export default function DriverDashboardPage() {
   const { user } = useAuth();
+  const isOnline = useOnlineStatus();
   const {
     vehicles,
     loading: vehiclesLoading,
@@ -125,7 +127,7 @@ export default function DriverDashboardPage() {
     return vehicles.find((vehicle) => vehicle.vehicle_id === selectedVehicleId) || null;
   }, [selectedVehicleId, vehicles]);
 
-  const canStartChecking = canStartDriverChecking({
+  const canStartChecking = isOnline && canStartDriverChecking({
     selectedVehicleId,
     selectedVehicle,
     isSharedAccount,
@@ -163,7 +165,7 @@ export default function DriverDashboardPage() {
   }, [dailyCheck?.daily_id, loadUploadedPhotos]);
 
   const handlePrepareStartChecking = async () => {
-    if (!canStartChecking) return;
+    if (!canStartChecking || !isOnline) return;
 
     await startDailyCheck({
       vehicleId: selectedVehicle.vehicle_id,
@@ -173,6 +175,7 @@ export default function DriverDashboardPage() {
   };
 
   const canOpenCamera = isSessionActive
+    && isOnline
     && !isSubmitting
     && !isSessionCompleted
     && restoreStatus === 'success'
@@ -181,6 +184,7 @@ export default function DriverDashboardPage() {
     && Number.isFinite(coordinates.longitude);
   const checklistDisabled = !canOpenCamera;
   const canSubmitReport = isSessionActive
+    && isOnline
     && restoreStatus === 'success'
     && allRequiredUploaded
     && uploadedRequiredCount === requiredTotal
@@ -189,7 +193,7 @@ export default function DriverDashboardPage() {
     && !isSubmitting;
 
   const handleRetryPhotoStatus = () => {
-    if (!dailyCheck?.daily_id) return;
+    if (!dailyCheck?.daily_id || !isOnline) return;
 
     const controller = new AbortController();
     loadUploadedPhotos({
@@ -206,6 +210,11 @@ export default function DriverDashboardPage() {
 
     if (!dailyCheck?.daily_id) {
       setCameraPreparationError('Sesi checking belum tersedia. Kamera belum dapat dibuka.');
+      return;
+    }
+
+    if (!isOnline) {
+      setCameraPreparationError('Koneksi internet diperlukan untuk mengambil dan mengupload foto.');
       return;
     }
 
@@ -264,7 +273,7 @@ export default function DriverDashboardPage() {
   };
 
   const handleRetryUpload = (draft) => {
-    if (!draft || isSubmitting || isSessionCompleted) return;
+    if (!draft || isSubmitting || isSessionCompleted || !isOnline) return;
 
     retryUpload({
       dailyCheckId: dailyCheck?.daily_id,
@@ -273,7 +282,7 @@ export default function DriverDashboardPage() {
   };
 
   const handleOpenSubmitConfirmation = () => {
-    if (!canSubmitReport) return;
+    if (!canSubmitReport || !isOnline) return;
     setSubmitConfirmationOpen(true);
   };
 
