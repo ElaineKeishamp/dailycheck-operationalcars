@@ -1,8 +1,24 @@
 import { Download, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { usePwaInstall } from '../../hooks/usePwaInstall';
 
 export default function PwaInstallPrompt() {
   const { canInstall, promptInstall, dismissInstall } = usePwaInstall();
+  const dismissButtonRef = useRef(null);
+  const previousFocusRef = useRef(null);
+
+  useEffect(() => {
+    if (!canInstall) return undefined;
+
+    previousFocusRef.current = document.activeElement;
+    dismissButtonRef.current?.focus();
+
+    return () => {
+      if (previousFocusRef.current instanceof HTMLElement) {
+        previousFocusRef.current.focus();
+      }
+    };
+  }, [canInstall]);
 
   if (!canInstall) return null;
 
@@ -25,6 +41,7 @@ export default function PwaInstallPrompt() {
         <button
           type="button"
           onClick={dismissInstall}
+          ref={dismissButtonRef}
           className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/30"
           aria-label="Tutup prompt install"
         >

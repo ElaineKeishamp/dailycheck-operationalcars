@@ -1,4 +1,5 @@
 import { RefreshCw, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function PwaUpdatePrompt() {
@@ -6,6 +7,21 @@ export default function PwaUpdatePrompt() {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW();
+  const dismissButtonRef = useRef(null);
+  const previousFocusRef = useRef(null);
+
+  useEffect(() => {
+    if (!needRefresh) return undefined;
+
+    previousFocusRef.current = document.activeElement;
+    dismissButtonRef.current?.focus();
+
+    return () => {
+      if (previousFocusRef.current instanceof HTMLElement) {
+        previousFocusRef.current.focus();
+      }
+    };
+  }, [needRefresh]);
 
   if (!needRefresh) return null;
 
@@ -30,12 +46,13 @@ export default function PwaUpdatePrompt() {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold">Versi baru tersedia</p>
           <p className="mt-1 text-sm text-slate-600">
-            Selesaikan proses checking terlebih dahulu, lalu perbarui aplikasi.
+            Selesaikan proses checking dan pastikan tidak ada foto yang sedang diunggah sebelum memperbarui aplikasi.
           </p>
         </div>
         <button
           type="button"
           onClick={handleDismiss}
+          ref={dismissButtonRef}
           className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/30"
           aria-label="Tutup prompt pembaruan"
         >
