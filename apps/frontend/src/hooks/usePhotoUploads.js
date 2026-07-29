@@ -59,6 +59,7 @@ export function usePhotoUploads() {
   const mountedRef = useRef(true);
   const activeDailyCheckIdRef = useRef(null);
   const restoreRequestIdRef = useRef(0);
+  const uploadStatesRef = useRef({});
 
   useEffect(() => {
     mountedRef.current = true;
@@ -74,34 +75,50 @@ export function usePhotoUploads() {
     const checklistId = draft?.checklistId;
     if (!checklistId) return;
 
-    const currentState = uploadStates[checklistId];
+    const currentState = uploadStatesRef.current[checklistId];
     if (currentState?.status === 'uploading' || currentState?.status === 'uploaded') {
       return;
     }
 
     if (!draft?.blob) {
-      setUploadStates((current) => ({
-        ...current,
-        [checklistId]: {
-          status: 'failed',
-          uploadedPhoto: null,
-          errorMessage: 'File foto lokal tidak ditemukan. Ambil ulang foto.',
-        },
-      }));
+      setUploadStates((current) => {
+        const next = {
+          ...current,
+          [checklistId]: {
+            status: 'failed',
+            uploadedPhoto: null,
+            errorMessage: 'File foto lokal tidak ditemukan. Ambil ulang foto.',
+          },
+        };
+        uploadStatesRef.current = next;
+        return next;
+      });
       return;
     }
 
     const controller = new AbortController();
     controllersRef.current[checklistId] = controller;
-
-    setUploadStates((current) => ({
-      ...current,
+    uploadStatesRef.current = {
+      ...uploadStatesRef.current,
       [checklistId]: {
         status: 'uploading',
         uploadedPhoto: null,
         errorMessage: '',
       },
-    }));
+    };
+
+    setUploadStates((current) => {
+      const next = {
+        ...current,
+        [checklistId]: {
+          status: 'uploading',
+          uploadedPhoto: null,
+          errorMessage: '',
+        },
+      };
+      uploadStatesRef.current = next;
+      return next;
+    });
 
     try {
       const uploadedPhoto = await uploadDailyCheckPhoto({
@@ -112,14 +129,18 @@ export function usePhotoUploads() {
 
       if (!mountedRef.current) return;
 
-      setUploadStates((current) => ({
-        ...current,
-        [checklistId]: {
-          status: 'uploaded',
-          uploadedPhoto,
-          errorMessage: '',
-        },
-      }));
+      setUploadStates((current) => {
+        const next = {
+          ...current,
+          [checklistId]: {
+            status: 'uploaded',
+            uploadedPhoto,
+            errorMessage: '',
+          },
+        };
+        uploadStatesRef.current = next;
+        return next;
+      });
     } catch (error) {
       if (!mountedRef.current || error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
         return;
@@ -133,14 +154,18 @@ export function usePhotoUploads() {
           if (!mountedRef.current) return;
           const restoredPhoto = photos.find((photo) => getChecklistIdForUploadedPhoto(photo) === checklistId);
           if (restoredPhoto) {
-            setUploadStates((current) => ({
-              ...current,
-              [checklistId]: {
-                status: 'uploaded',
-                uploadedPhoto: restoredPhoto,
-                errorMessage: null,
-              },
-            }));
+            setUploadStates((current) => {
+              const next = {
+                ...current,
+                [checklistId]: {
+                  status: 'uploaded',
+                  uploadedPhoto: restoredPhoto,
+                  errorMessage: null,
+                },
+              };
+              uploadStatesRef.current = next;
+              return next;
+            });
             return;
           }
         } catch (restoreErrorAfterConflict) {
@@ -154,18 +179,22 @@ export function usePhotoUploads() {
         }
       }
 
-      setUploadStates((current) => ({
-        ...current,
-        [checklistId]: {
-          status: 'failed',
-          uploadedPhoto: null,
-          errorMessage: getUploadErrorMessage(error),
-        },
-      }));
+      setUploadStates((current) => {
+        const next = {
+          ...current,
+          [checklistId]: {
+            status: 'failed',
+            uploadedPhoto: null,
+            errorMessage: getUploadErrorMessage(error),
+          },
+        };
+        uploadStatesRef.current = next;
+        return next;
+      });
     } finally {
       delete controllersRef.current[checklistId];
     }
-  }, [uploadStates]);
+  }, []);
 
   const retryUpload = useCallback(({ dailyCheckId, draft }) => {
     uploadPhoto({ dailyCheckId, draft });
@@ -186,6 +215,7 @@ export function usePhotoUploads() {
         };
       });
 
+      uploadStatesRef.current = next;
       return next;
     });
   }, []);
@@ -200,6 +230,7 @@ export function usePhotoUploads() {
       activeDailyCheckIdRef.current = dailyCheckId;
       Object.values(controllersRef.current).forEach((controller) => controller.abort());
       controllersRef.current = {};
+      uploadStatesRef.current = {};
       setUploadStates({});
     }
 
@@ -241,6 +272,7 @@ export function usePhotoUploads() {
     controllersRef.current = {};
     activeDailyCheckIdRef.current = null;
     restoreRequestIdRef.current += 1;
+    uploadStatesRef.current = {};
     setUploadStates({});
     setRestoreStatus('idle');
     setRestoreError(null);

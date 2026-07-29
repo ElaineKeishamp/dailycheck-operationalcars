@@ -89,8 +89,10 @@ export function useDailyCheckSession() {
   const clearError = useCallback(() => {
     setError(null);
     setMissingParts([]);
-    if (statusRef.current === 'error' || statusRef.current === 'conflict') {
+    if (statusRef.current === 'error') {
       updateStatus(dailyCheck ? 'active' : 'idle');
+    } else if (statusRef.current === 'conflict') {
+      updateStatus(dailyCheck?.status === 'submitted' ? 'completed' : 'conflict');
     }
   }, [dailyCheck, updateStatus]);
 
@@ -209,6 +211,15 @@ export function useDailyCheckSession() {
       return submittedDailyCheck;
     } catch (err) {
       if (!isMountedRef.current || err.name === 'CanceledError' || err.name === 'AbortError') return null;
+
+      if (err.submittedDailyCheck?.daily_id === submittingDailyCheckId) {
+        setDailyCheck(err.submittedDailyCheck);
+        updateStatus('completed');
+        setError(null);
+        setMessage(ERROR_MESSAGES.submitConflict);
+        setMissingParts([]);
+        return err.submittedDailyCheck;
+      }
 
       setMissingParts(err.normalizedMissingParts || []);
       setError(mapSubmitError(err));

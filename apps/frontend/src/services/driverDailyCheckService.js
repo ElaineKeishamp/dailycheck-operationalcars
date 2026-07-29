@@ -96,6 +96,18 @@ export async function submitDailyCheck({ dailyCheckId, signal }) {
 
     return dailyCheck;
   } catch (error) {
+    const conflictDailyCheck = error.response?.data?.daily_check;
+    if (error.response?.status === 409 && conflictDailyCheck) {
+      try {
+        const normalizedConflict = normalizeDailyCheck(conflictDailyCheck);
+        if (normalizedConflict.status === 'submitted') {
+          error.submittedDailyCheck = normalizedConflict;
+        }
+      } catch {
+        // Keep the original submit error when the conflict payload is malformed.
+      }
+    }
+
     const missingParts = error.response?.data?.missing_parts;
     if (Array.isArray(missingParts)) {
       error.normalizedMissingParts = missingParts.map(normalizeMissingPart).filter(Boolean);

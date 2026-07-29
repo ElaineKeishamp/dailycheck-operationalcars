@@ -10,6 +10,8 @@ export default function CameraCaptureOverlay({
   onAcceptPhoto,
 }) {
   const videoRef = useRef(null);
+  const closeButtonRef = useRef(null);
+  const previousFocusRef = useRef(null);
   const [videoReady, setVideoReady] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState(null);
   const {
@@ -22,12 +24,18 @@ export default function CameraCaptureOverlay({
   } = useCameraCapture();
 
   useEffect(() => {
+    previousFocusRef.current = document.activeElement;
+    const previousBodyOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     openCamera();
+    closeButtonRef.current?.focus();
 
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousBodyOverflow;
       closeCamera();
+      if (previousFocusRef.current instanceof HTMLElement) {
+        previousFocusRef.current.focus();
+      }
     };
   }, [closeCamera, openCamera]);
 
@@ -82,6 +90,7 @@ export default function CameraCaptureOverlay({
         <button
           type="button"
           onClick={handleClose}
+          ref={closeButtonRef}
           className="w-11 h-11 rounded-lg bg-white/10 text-white inline-flex items-center justify-center hover:bg-white/15"
           aria-label="Tutup kamera"
         >

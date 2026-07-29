@@ -1,7 +1,7 @@
 import { CheckCircle2, ClipboardCheck } from 'lucide-react';
 
 export default function DailyCheckCompletedStatus({ dailyCheck, selectedVehicle }) {
-  const completedAt = dailyCheck?.updated_at || dailyCheck?.submitted_at || dailyCheck?.created_at;
+  const completedAt = dailyCheck?.submitted_at || dailyCheck?.updated_at;
 
   return (
     <section

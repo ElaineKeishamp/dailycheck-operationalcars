@@ -1,5 +1,5 @@
 import { Loader2, Send, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export default function SubmitConfirmationDialog({
   open,
@@ -7,8 +7,14 @@ export default function SubmitConfirmationDialog({
   onCancel,
   onConfirm,
 }) {
+  const confirmButtonRef = useRef(null);
+  const previousFocusRef = useRef(null);
+
   useEffect(() => {
     if (!open) return undefined;
+
+    previousFocusRef.current = document.activeElement;
+    confirmButtonRef.current?.focus();
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape' && !submitting) {
@@ -17,7 +23,12 @@ export default function SubmitConfirmationDialog({
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (previousFocusRef.current instanceof HTMLElement) {
+        previousFocusRef.current.focus();
+      }
+    };
   }, [onCancel, open, submitting]);
 
   if (!open) return null;
@@ -67,6 +78,7 @@ export default function SubmitConfirmationDialog({
             type="button"
             onClick={onConfirm}
             disabled={submitting}
+            ref={confirmButtonRef}
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {submitting ? <Loader2 size={17} className="animate-spin" aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}
