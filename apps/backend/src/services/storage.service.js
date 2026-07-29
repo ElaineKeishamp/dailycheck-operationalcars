@@ -1,4 +1,12 @@
-const { S3Client, PutObjectCommand, GetObjectCommand, CreateBucketCommand, HeadBucketCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
+const {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  CreateBucketCommand,
+  HeadBucketCommand,
+  HeadObjectCommand,
+} = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 require('dotenv').config();
 
@@ -94,6 +102,29 @@ async function objectExists(key) {
   }
 }
 
+function isSafeObjectKey(key) {
+  return typeof key === 'string'
+    && key.length > 0
+    && key.length <= 1024
+    && key.startsWith('inspections/')
+    && !key.startsWith('/')
+    && !key.includes('..')
+    && !/[\\\0\r\n]/.test(key);
+}
+
+async function deleteObject(key) {
+  if (!isSafeObjectKey(key)) {
+    throw new Error('Object key tidak valid');
+  }
+
+  await s3Client.send(new DeleteObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+  }));
+
+  return true;
+}
+
 module.exports = {
   s3Client,
   bucketName,
@@ -101,4 +132,5 @@ module.exports = {
   generateUploadPresignedUrl,
   generateViewPresignedUrl,
   objectExists,
+  deleteObject,
 };

@@ -10,6 +10,7 @@ import {
   PanelLeft,
   PanelRight,
   RefreshCw,
+  Trash2,
   TriangleAlert,
 } from 'lucide-react';
 
@@ -43,15 +44,18 @@ export default function PhotoChecklistCard({
   item,
   isCaptured,
   disabled,
+  deleteDisabled = disabled,
   uploadState,
   onOpenCamera,
   onRetryUpload,
+  onDeletePhoto,
 }) {
   const Icon = ICONS[item.icon] || CarFront;
   const status = getStatusConfig({ isCaptured, uploadState });
   const isUploaded = status.tone === 'uploaded';
   const isUploading = status.tone === 'uploading';
   const isFailed = status.tone === 'failed';
+  const isDeleting = Boolean(uploadState?.isDeleting);
   const actionDisabled = disabled || isUploaded || isUploading;
   const successTone = isUploaded || status.tone === 'captured';
 
@@ -81,13 +85,27 @@ export default function PhotoChecklistCard({
           {isUploaded && <p className="text-xs text-slate-500 mt-1">Foto sudah diupload</p>}
         </div>
 
-        {isUploading && <Loader2 size={20} className="text-blue-600 flex-shrink-0 animate-spin" aria-hidden="true" />}
-        {isUploaded && <CheckCircle2 size={20} className="text-green-600 flex-shrink-0" aria-hidden="true" />}
+        {(isUploading || isDeleting) && <Loader2 size={20} className="text-blue-600 flex-shrink-0 animate-spin" aria-hidden="true" />}
+        {isUploaded && !isDeleting && <CheckCircle2 size={20} className="text-green-600 flex-shrink-0" aria-hidden="true" />}
         {isFailed && <TriangleAlert size={20} className="text-red-600 flex-shrink-0" aria-hidden="true" />}
         {!isCaptured && !isUploading && !isUploaded && !isFailed && (
           <Camera size={20} className="text-slate-300 flex-shrink-0" aria-hidden="true" />
         )}
       </button>
+
+      {isUploaded && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={onDeletePhoto}
+            disabled={deleteDisabled || isDeleting}
+            className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-3 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isDeleting ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}
+            {isDeleting ? 'Menghapus...' : 'Hapus & Ambil Ulang'}
+          </button>
+        </div>
+      )}
 
       {isFailed && (
         <div className="mt-3 flex flex-col gap-2">

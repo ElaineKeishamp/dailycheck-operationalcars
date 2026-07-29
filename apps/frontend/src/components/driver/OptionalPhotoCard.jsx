@@ -1,4 +1,4 @@
-import { CheckCircle2, ImagePlus, Loader2, RefreshCw, TriangleAlert } from 'lucide-react';
+import { CheckCircle2, ImagePlus, Loader2, RefreshCw, Trash2, TriangleAlert } from 'lucide-react';
 
 function getStatusConfig({ isCaptured, uploadState }) {
   if (uploadState?.status === 'uploading') return { label: 'Mengupload', tone: 'uploading' };
@@ -8,11 +8,20 @@ function getStatusConfig({ isCaptured, uploadState }) {
   return { label: 'Belum', tone: 'empty' };
 }
 
-export default function OptionalPhotoCard({ isCaptured, disabled, uploadState, onOpenCamera, onRetryUpload }) {
+export default function OptionalPhotoCard({
+  isCaptured,
+  disabled,
+  deleteDisabled = disabled,
+  uploadState,
+  onOpenCamera,
+  onRetryUpload,
+  onDeletePhoto,
+}) {
   const status = getStatusConfig({ isCaptured, uploadState });
   const isUploading = status.tone === 'uploading';
   const isUploaded = status.tone === 'uploaded';
   const isFailed = status.tone === 'failed';
+  const isDeleting = Boolean(uploadState?.isDeleting);
   const successTone = isUploaded || status.tone === 'captured';
   const actionDisabled = disabled || isUploading || isUploaded;
 
@@ -45,8 +54,8 @@ export default function OptionalPhotoCard({ isCaptured, disabled, uploadState, o
             <p className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${
               isFailed ? 'text-red-700' : isUploading ? 'text-blue-700' : successTone ? 'text-green-700' : 'text-slate-400'
             }`}>
-              {isUploading && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
-              {isUploaded && <CheckCircle2 size={14} aria-hidden="true" />}
+              {(isUploading || isDeleting) && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+              {isUploaded && !isDeleting && <CheckCircle2 size={14} aria-hidden="true" />}
               {isFailed && <TriangleAlert size={14} aria-hidden="true" />}
               {status.label}
             </p>
@@ -54,6 +63,20 @@ export default function OptionalPhotoCard({ isCaptured, disabled, uploadState, o
           </div>
         </div>
       </button>
+
+      {isUploaded && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={onDeletePhoto}
+            disabled={deleteDisabled || isDeleting}
+            className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-3 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isDeleting ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}
+            {isDeleting ? 'Menghapus...' : 'Hapus & Ambil Ulang'}
+          </button>
+        </div>
+      )}
 
       {isFailed && (
         <div className="mt-3 flex flex-col gap-2">

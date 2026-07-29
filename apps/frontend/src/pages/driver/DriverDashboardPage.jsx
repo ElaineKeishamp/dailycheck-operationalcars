@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Clock, CheckCircle2, History, Calendar } from 'lucide-react';
+import { CheckCircle2, History, Calendar } from 'lucide-react';
 import ActiveDailyCheckStatus from '../../components/driver/ActiveDailyCheckStatus';
 import CameraCaptureOverlay from '../../components/driver/CameraCaptureOverlay';
 import ChecklistProgress from '../../components/driver/ChecklistProgress';
 import DailyCheckCompletedStatus from '../../components/driver/DailyCheckCompletedStatus';
+import DeletePhotoConfirmationDialog from '../../components/driver/DeletePhotoConfirmationDialog';
 import DriverHeader from '../../components/driver/DriverHeader';
 import OptionalPhotoCard from '../../components/driver/OptionalPhotoCard';
 import PhotoChecklistCard from '../../components/driver/PhotoChecklistCard';
@@ -70,6 +71,7 @@ export default function DriverDashboardPage() {
   const {
     photoDrafts,
     savePhotoDraft,
+    removePhotoDraft,
     requiredCapturedCount,
     requiredTotal,
     allRequiredCaptured,
@@ -78,7 +80,9 @@ export default function DriverDashboardPage() {
     uploadStates,
     uploadPhoto,
     retryUpload,
+    deleteUploadedPhoto,
     isUploadingAny,
+    isDeletingAny,
     hasUploadFailures,
     uploadedRequiredCount,
     allRequiredUploaded,
@@ -88,6 +92,8 @@ export default function DriverDashboardPage() {
   } = usePhotoUploads();
   const [selectedChecklistItem, setSelectedChecklistItem] = useState(null);
   const [cameraPreparationError, setCameraPreparationError] = useState(null);
+  const [deletePhotoError, setDeletePhotoError] = useState(null);
+  const [deleteConfirmationItem, setDeleteConfirmationItem] = useState(null);
   const [submitConfirmationOpen, setSubmitConfirmationOpen] = useState(false);
   const isSharedAccount = Boolean(user?.is_shared_account);
   const isSubmitting = sessionStatus === 'submitting';
@@ -183,12 +189,14 @@ export default function DriverDashboardPage() {
     && Number.isFinite(coordinates.latitude)
     && Number.isFinite(coordinates.longitude);
   const checklistDisabled = !canOpenCamera;
+  const deletePhotoDisabled = !isSessionActive || isSubmitting || isSessionCompleted;
   const canSubmitReport = isSessionActive
     && isOnline
     && restoreStatus === 'success'
     && allRequiredUploaded
     && uploadedRequiredCount === requiredTotal
     && !isUploadingAny
+    && !isDeletingAny
     && !hasUploadFailures
     && !isSubmitting;
 
@@ -242,6 +250,38 @@ export default function DriverDashboardPage() {
     setSelectedChecklistItem(checklistItem);
   };
 
+  const handleOpenDeleteConfirmation = (checklistItem) => {
+    setCameraPreparationError(null);
+
+    if (!dailyCheck?.daily_id) {
+      setDeletePhotoError('Sesi checking belum tersedia. Foto belum dapat dihapus.');
+      return;
+    }
+
+    if (isSubmitting || isSessionCompleted) {
+      setDeletePhotoError('Laporan sudah dikirim atau sedang dikirim. Foto tidak dapat dihapus.');
+      return;
+    }
+
+    if (!isOnline) {
+      setDeletePhotoError('Anda sedang offline. Sambungkan kembali internet sebelum menghapus foto.');
+      return;
+    }
+
+    if (!validChecklistIds.has(checklistItem?.checklistId)) {
+      setDeletePhotoError('Bagian foto tidak valid.');
+      return;
+    }
+
+    if (uploadStates[checklistItem.checklistId]?.status !== 'uploaded') {
+      setDeletePhotoError('Foto belum tersimpan di server.');
+      return;
+    }
+
+    setDeletePhotoError(null);
+    setDeleteConfirmationItem(checklistItem);
+  };
+
   const handleCloseCamera = () => {
     setSelectedChecklistItem(null);
   };
@@ -279,6 +319,32 @@ export default function DriverDashboardPage() {
       dailyCheckId: dailyCheck?.daily_id,
       draft,
     });
+  };
+
+  const handleCloseDeleteConfirmation = () => {
+    if (deleteConfirmationItem && uploadStates[deleteConfirmationItem.checklistId]?.isDeleting) return;
+    setDeleteConfirmationItem(null);
+  };
+
+  const handleConfirmDeletePhoto = async () => {
+    if (!deleteConfirmationItem || !dailyCheck?.daily_id) return;
+
+    const result = await deleteUploadedPhoto({
+      dailyCheckId: dailyCheck.daily_id,
+      checklistId: deleteConfirmationItem.checklistId,
+      isOnline,
+      isSubmitting,
+    });
+
+    if (result.ok) {
+      removePhotoDraft(deleteConfirmationItem.checklistId);
+      setDeletePhotoError(null);
+      setDeleteConfirmationItem(null);
+      return;
+    }
+
+    setDeletePhotoError(result.errorMessage || 'Gagal menghapus foto. Silakan coba lagi.');
+    setDeleteConfirmationItem(null);
   };
 
   const handleOpenSubmitConfirmation = () => {
@@ -373,6 +439,12 @@ export default function DriverDashboardPage() {
                 </div>
               )}
 
+              {deletePhotoError && (
+                <div className="rounded-lg border border-red-100 bg-red-50 p-3" role="status" aria-live="polite">
+                  <p className="text-sm text-red-600">{deletePhotoError}</p>
+                </div>
+              )}
+
               {sessionError && sessionStatus === 'active' && missingParts.length > 0 && (
                 <div className="rounded-lg border border-amber-100 bg-amber-50 p-3" role="status" aria-live="polite">
                   <p className="text-sm font-semibold text-amber-800">
@@ -420,6 +492,7 @@ export default function DriverDashboardPage() {
                     item={item}
                     isCaptured={Boolean(photoDrafts[item.id])}
                     disabled={checklistDisabled}
+                    deleteDisabled={deletePhotoDisabled}
                     uploadState={uploadStates[item.id]}
                     onOpenCamera={() => handleOpenCamera({
                       checklistId: item.id,
@@ -429,6 +502,13 @@ export default function DriverDashboardPage() {
                       isOptional: false,
                     })}
                     onRetryUpload={() => handleRetryUpload(photoDrafts[item.id])}
+                    onDeletePhoto={() => handleOpenDeleteConfirmation({
+                      checklistId: item.id,
+                      partType: item.id,
+                      partIndex: null,
+                      label: item.label,
+                      isOptional: false,
+                    })}
                   />
                 ))}
               </section>
@@ -436,14 +516,17 @@ export default function DriverDashboardPage() {
               <TireChecklistGrid
                 photoDrafts={photoDrafts}
                 disabled={checklistDisabled}
+                deleteDisabled={deletePhotoDisabled}
                 uploadStates={uploadStates}
                 onOpenCamera={handleOpenCamera}
                 onRetryUpload={handleRetryUpload}
+                onDeletePhoto={handleOpenDeleteConfirmation}
               />
 
               <OptionalPhotoCard
                 isCaptured={Boolean(photoDrafts.lainnya)}
                 disabled={checklistDisabled}
+                deleteDisabled={deletePhotoDisabled}
                 uploadState={uploadStates.lainnya}
                 onOpenCamera={() => handleOpenCamera({
                   checklistId: 'lainnya',
@@ -453,6 +536,13 @@ export default function DriverDashboardPage() {
                   isOptional: true,
                 })}
                 onRetryUpload={() => handleRetryUpload(photoDrafts.lainnya)}
+                onDeletePhoto={() => handleOpenDeleteConfirmation({
+                  checklistId: 'lainnya',
+                  partType: 'lainnya',
+                  partIndex: null,
+                  label: 'Foto Tambahan',
+                  isOptional: true,
+                })}
               />
             </>
           )}
@@ -522,6 +612,14 @@ export default function DriverDashboardPage() {
         submitting={isSubmitting}
         onCancel={handleCloseSubmitConfirmation}
         onConfirm={handleConfirmSubmit}
+      />
+
+      <DeletePhotoConfirmationDialog
+        open={Boolean(deleteConfirmationItem)}
+        deleting={Boolean(deleteConfirmationItem && uploadStates[deleteConfirmationItem.checklistId]?.isDeleting)}
+        photoLabel={deleteConfirmationItem?.label}
+        onCancel={handleCloseDeleteConfirmation}
+        onConfirm={handleConfirmDeletePhoto}
       />
     </div>
   );

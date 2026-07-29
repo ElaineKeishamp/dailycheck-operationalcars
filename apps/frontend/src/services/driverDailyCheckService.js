@@ -115,3 +115,16 @@ export async function submitDailyCheck({ dailyCheckId, signal }) {
     throw error;
   }
 }
+
+export async function deleteDailyCheckPhoto({ dailyCheckId, photoId, signal }) {
+  if (!dailyCheckId || !photoId) {
+    throw new Error('Data foto tidak valid');
+  }
+
+  const response = await apiClient.delete(
+    `/daily-checks/${dailyCheckId}/photos/${photoId}`,
+    { signal }
+  );
+
+  return response.data?.data || null;
+}

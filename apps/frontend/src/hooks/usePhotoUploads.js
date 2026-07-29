@@ -7,6 +7,7 @@ import {
   UPLOAD_STORAGE_FAILED,
   uploadDailyCheckPhoto,
 } from '../services/driverPhotoService';
+import { deleteDailyCheckPhoto } from '../services/driverDailyCheckService';
 
 const REQUIRED_CHECKLIST_IDS = new Set([
   ...STANDARD_PHOTO_ITEMS.map((item) => item.id),
@@ -51,11 +52,28 @@ function getUploadErrorMessage(error) {
   return error?.message || 'Upload foto gagal. Coba ulangi.';
 }
 
+function getDeleteErrorMessage(error) {
+  if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
+    return 'Penghapusan foto dibatalkan';
+  }
+
+  const status = error?.response?.status;
+  const serverMessage = error?.response?.data?.error;
+
+  if (status === 409) return serverMessage || 'Laporan sudah dikirim. Foto tidak dapat dihapus.';
+  if (status === 404) return serverMessage || 'Foto tidak ditemukan atau sudah dihapus.';
+  if (status === 403) return serverMessage || 'Anda tidak memiliki akses untuk menghapus foto ini.';
+  if (status === 400) return serverMessage || 'Data foto tidak valid.';
+
+  return error?.message || 'Gagal menghapus foto. Silakan coba lagi.';
+}
+
 export function usePhotoUploads() {
   const [uploadStates, setUploadStates] = useState({});
   const [restoreStatus, setRestoreStatus] = useState('idle');
   const [restoreError, setRestoreError] = useState(null);
   const controllersRef = useRef({});
+  const deleteControllersRef = useRef({});
   const mountedRef = useRef(true);
   const activeDailyCheckIdRef = useRef(null);
   const restoreRequestIdRef = useRef(0);
@@ -67,7 +85,9 @@ export function usePhotoUploads() {
     return () => {
       mountedRef.current = false;
       Object.values(controllersRef.current).forEach((controller) => controller.abort());
+      Object.values(deleteControllersRef.current).forEach((controller) => controller.abort());
       controllersRef.current = {};
+      deleteControllersRef.current = {};
     };
   }, []);
 
@@ -200,6 +220,104 @@ export function usePhotoUploads() {
     uploadPhoto({ dailyCheckId, draft });
   }, [uploadPhoto]);
 
+  const deleteUploadedPhoto = useCallback(async ({
+    dailyCheckId,
+    checklistId,
+    isOnline = true,
+    isSubmitting = false,
+  }) => {
+    if (!dailyCheckId || !checklistId) {
+      return { ok: false, errorMessage: 'Data foto tidak valid.' };
+    }
+
+    if (!isOnline) {
+      return {
+        ok: false,
+        errorMessage: 'Anda sedang offline. Sambungkan kembali internet sebelum menghapus foto.',
+      };
+    }
+
+    if (isSubmitting) {
+      return { ok: false, errorMessage: 'Tunggu hingga proses submit selesai sebelum menghapus foto.' };
+    }
+
+    const currentState = uploadStatesRef.current[checklistId];
+    const photoId = currentState?.uploadedPhoto?.checkPhotosId || currentState?.uploadedPhoto?.check_photos_id;
+
+    if (currentState?.status === 'uploading') {
+      return { ok: false, errorMessage: 'Tunggu hingga upload foto selesai sebelum menghapus.' };
+    }
+
+    if (currentState?.isDeleting || deleteControllersRef.current[checklistId]) {
+      return { ok: false, errorMessage: 'Foto sedang dihapus.' };
+    }
+
+    if (currentState?.status !== 'uploaded' || !photoId) {
+      return { ok: false, errorMessage: 'Foto belum tersimpan di server.' };
+    }
+
+    const controller = new AbortController();
+    deleteControllersRef.current[checklistId] = controller;
+
+    setUploadStates((current) => {
+      const slotState = current[checklistId] || currentState;
+      const next = {
+        ...current,
+        [checklistId]: {
+          ...slotState,
+          isDeleting: true,
+          errorMessage: '',
+        },
+      };
+      uploadStatesRef.current = next;
+      return next;
+    });
+
+    try {
+      const deletedPhoto = await deleteDailyCheckPhoto({
+        dailyCheckId,
+        photoId,
+        signal: controller.signal,
+      });
+
+      if (!mountedRef.current) return { ok: false, errorMessage: 'Penghapusan foto dibatalkan' };
+
+      restoreRequestIdRef.current += 1;
+      setUploadStates((current) => {
+        const next = { ...current };
+        delete next[checklistId];
+        uploadStatesRef.current = next;
+        return next;
+      });
+
+      return { ok: true, deletedPhoto };
+    } catch (error) {
+      if (!mountedRef.current || error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
+        return { ok: false, errorMessage: 'Penghapusan foto dibatalkan' };
+      }
+
+      const errorMessage = getDeleteErrorMessage(error);
+      setUploadStates((current) => {
+        const slotState = current[checklistId] || currentState;
+        const next = {
+          ...current,
+          [checklistId]: {
+            ...slotState,
+            status: 'uploaded',
+            isDeleting: false,
+            errorMessage,
+          },
+        };
+        uploadStatesRef.current = next;
+        return next;
+      });
+
+      return { ok: false, errorMessage };
+    } finally {
+      delete deleteControllersRef.current[checklistId];
+    }
+  }, []);
+
   const restoreUploadedPhotos = useCallback((photos) => {
     setUploadStates((current) => {
       const next = { ...current };
@@ -229,7 +347,9 @@ export function usePhotoUploads() {
     if (activeDailyCheckIdRef.current !== dailyCheckId) {
       activeDailyCheckIdRef.current = dailyCheckId;
       Object.values(controllersRef.current).forEach((controller) => controller.abort());
+      Object.values(deleteControllersRef.current).forEach((controller) => controller.abort());
       controllersRef.current = {};
+      deleteControllersRef.current = {};
       uploadStatesRef.current = {};
       setUploadStates({});
     }
@@ -269,7 +389,9 @@ export function usePhotoUploads() {
 
   const clearUploads = useCallback(() => {
     Object.values(controllersRef.current).forEach((controller) => controller.abort());
+    Object.values(deleteControllersRef.current).forEach((controller) => controller.abort());
     controllersRef.current = {};
+    deleteControllersRef.current = {};
     activeDailyCheckIdRef.current = null;
     restoreRequestIdRef.current += 1;
     uploadStatesRef.current = {};
@@ -288,6 +410,10 @@ export function usePhotoUploads() {
     return Object.values(uploadStates).some((state) => state.status === 'uploading');
   }, [uploadStates]);
 
+  const isDeletingAny = useMemo(() => {
+    return Object.values(uploadStates).some((state) => state.isDeleting);
+  }, [uploadStates]);
+
   const hasUploadFailures = useMemo(() => {
     return Object.entries(uploadStates).some(([checklistId, state]) => (
       REQUIRED_CHECKLIST_IDS.has(checklistId) && state.status === 'failed'
@@ -300,9 +426,11 @@ export function usePhotoUploads() {
     restoreError,
     uploadPhoto,
     retryUpload,
+    deleteUploadedPhoto,
     restoreUploadedPhotos,
     loadUploadedPhotos,
     isUploadingAny,
+    isDeletingAny,
     hasUploadFailures,
     uploadedRequiredCount,
     allRequiredUploaded: uploadedRequiredCount === REQUIRED_CHECKLIST_IDS.size,

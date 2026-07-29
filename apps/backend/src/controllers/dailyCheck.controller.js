@@ -58,9 +58,9 @@ function getPhotoKeyPrefix(dailyCheckId) {
 
 function isSafePhotoKey({ key, dailyCheckId, partType, partIndex }) {
   if (!key || typeof key !== 'string') return false;
-  const prefix = getPhotoKeyPrefix(dailyCheckId);
   const slot = getLogicalSlot(partType, partIndex);
-  return key.startsWith(prefix) && key.includes(`/${slot}_`) && /\.(jpe?g|png|webp)$/i.test(key);
+  const keyPattern = new RegExp(`^inspections/\\d{4}/${dailyCheckId}/${slot}_[^/]+\\.(jpe?g|png|webp)$`, 'i');
+  return keyPattern.test(key);
 }
 
 function getExtensionForContentType(contentType) {
@@ -309,35 +309,96 @@ async function getDailyCheckPhotos(req, res) {
   }
 }
 
+async function deleteDailyCheckPhoto(req, res) {
+  const { dailyCheckId, photoId } = req.params;
+
+  if (req.user.role !== 'driver') {
+    return res.status(403).json({ error: 'Hanya driver yang dapat menghapus foto checking' });
+  }
+
+  try {
+    const result = await dailyCheckModel.deletePhotoWithDailyCheckLock({
+      daily_id: dailyCheckId,
+      users_id: req.user.id,
+      check_photos_id: photoId,
+      deleteStorageObject: async (photo) => {
+        const safePhotoKey = isSafePhotoKey({
+          key: photo.r2_key,
+          dailyCheckId,
+          partType: photo.part_type,
+          partIndex: photo.part_index,
+        });
+        if (!safePhotoKey) {
+          const error = new Error('Data foto tidak valid');
+          error.code = 'UNSAFE_PHOTO_KEY';
+          throw error;
+        }
+
+        await storageService.deleteObject(photo.r2_key);
+      },
+    });
+
+    if (result.status === 'daily_check_not_found') {
+      return res.status(404).json({ error: 'Daily check tidak ditemukan' });
+    }
+
+    if (result.status === 'daily_check_submitted') {
+      return res.status(409).json({ error: 'Laporan checking sudah disubmit. Foto tidak dapat dihapus.' });
+    }
+
+    if (result.status === 'photo_not_found') {
+      return res.status(404).json({ error: 'Foto tidak ditemukan' });
+    }
+
+    const deletedPhoto = result.photo;
+
+    res.json({
+      message: 'Foto berhasil dihapus. Silakan ambil ulang foto.',
+      data: {
+        check_photos_id: deletedPhoto.check_photos_id,
+        daily_id: deletedPhoto.daily_id,
+        part_type: deletedPhoto.part_type,
+        part_index: deletedPhoto.part_index,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'UNSAFE_PHOTO_KEY') {
+      return res.status(500).json({ error: 'Data foto tidak valid' });
+    }
+    res.status(500).json({ error: 'Terjadi kesalahan server' });
+  }
+}
+
 async function submitDailyCheck(req, res) {
   const { dailyCheckId } = req.params;
 
   try {
-    const dailyCheck = await dailyCheckModel.findByIdAndUser(dailyCheckId, req.user.id);
-    if (!dailyCheck) {
+    const result = await dailyCheckModel.submitDailyCheckWithLock({
+      daily_id: dailyCheckId,
+      users_id: req.user.id,
+      getMissingRequiredPhotoSlots,
+    });
+
+    if (result.status === 'daily_check_not_found') {
       return res.status(404).json({ error: 'Daily check tidak ditemukan' });
     }
 
-    if (dailyCheck.status !== 'incomplete') {
+    if (result.status === 'daily_check_submitted') {
       return res.status(409).json({
         error: 'Laporan checking ini sudah pernah dikirim',
-        daily_check: dailyCheck,
+        daily_check: result.dailyCheck,
       });
     }
 
-    const photos = await dailyCheckModel.getPhotosByDailyId(dailyCheckId);
-    const missing = getMissingRequiredPhotoSlots(photos);
-
-    if (missing.length > 0) {
+    if (result.status === 'missing_required_photos') {
       return res.status(400).json({
         error: 'Foto wajib belum lengkap',
-        missing_parts: missing,
+        missing_parts: result.missing,
       });
     }
 
-    const updated = await dailyCheckModel.updateStatus(dailyCheckId, 'submitted');
-
-    res.json({ message: 'Laporan berhasil disubmit', daily_check: updated });
+    res.json({ message: 'Laporan berhasil disubmit', daily_check: result.dailyCheck });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Terjadi kesalahan server' });
@@ -372,5 +433,6 @@ module.exports = {
   getPhotoUploadUrl,
   uploadPhoto,
   getDailyCheckPhotos,
+  deleteDailyCheckPhoto,
   submitDailyCheck,
 };
