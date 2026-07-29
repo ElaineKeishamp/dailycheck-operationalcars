@@ -151,23 +151,45 @@ Driver mulai sesi checking harian.
 ---
 
 ## POST /daily-checks/:dailyCheckId/photos
-Upload foto per bagian mobil. Dipanggil berkali-kali (1 kali per foto).
+Upload foto per bagian mobil. Dipanggil berkali-kali (1 kali per foto). Endpoint ini sudah menerima `multipart/form-data`, tetapi penyimpanan foto real belum dapat berjalan sampai konfigurasi storage S3/R2/MinIO ditambahkan.
 
 **Headers:** `Authorization: Bearer <token>`
 
-**Request Body:**
+**Content-Type:** `multipart/form-data`
+
+**Form fields:**
+- `photo` — file gambar, wajib. Field name harus `photo`.
+- `part_type` — wajib. Nilai yang didukung: `odo`, `body_kiri`, `body_kanan`, `kap`, `depan`, `belakang`, `interior`, `ban`, `lainnya`.
+- `note` — opsional.
+
+**File limit dan tipe:**
+- Maksimal 8 MB.
+- MIME type yang diterima: `image/jpeg`, `image/png`, `image/webp`.
+
+**Validasi akses:**
+- Daily check harus ada.
+- Daily check harus milik user yang sedang login.
+- Status daily check harus `incomplete`.
+
+**Catatan ban:** schema database belum memiliki kolom tire index / `part_index`. Untuk `ban`, upload empat record terpisah dengan `part_type = ban`. Server belum bisa membedakan posisi ban saat restorasi data.
+
+**Response sukses jika storage sudah tersedia (201):**
 ```json
-{
-  "part_type": "odo | body_kiri | body_kanan | kap | depan | belakang | interior | ban | lainnya",
-  "note": "opsional"
-}
+{ "photo": { "check_photos_id": "...", "part_type": "odo", "r2_key": "...", "thumbnail_key": "...", ... } }
 ```
 
-**Catatan buat frontend:** untuk `ban`, panggil endpoint ini 4 kali (1 per foto ban). Untuk `body_kiri`/`body_kanan`, boleh dipanggil lebih dari 1 kali kalau mau lebih dari 1 foto.
-
-**Response Sukses (201):**
+**Response saat storage belum dikonfigurasi (503):**
 ```json
-{ "photo": { "check_photos_id": "...", "part_type": "odo", ... } }
+{ "error": "Penyimpanan foto belum dikonfigurasi" }
+```
+
+**Response gagal lain:**
+- `400` — file kosong, `part_type` tidak valid, tipe file tidak didukung, atau request tidak valid
+- `403` — daily check bukan milik user yang sedang login
+- `404` — daily check tidak ditemukan
+- `409` — daily check sudah disubmit
+- `413` — file terlalu besar
+- `500` — kegagalan server/storage/database tanpa detail internal
 
 ---
 
@@ -177,11 +199,7 @@ Upload foto per bagian mobil. Dipanggil berkali-kali (1 kali per foto).
 - **Model layer:** sudah ada model terpisah di `src/models/` — `user.model.js`, `vehicle.model.js`, `dailyCheck.model.js`, `checkPhoto.model.js`.
 - **Controllers:** `src/controllers/` sudah memanggil model-layer (e.g., `auth.controller.js`, `admin.controller.js`, `dailyCheck.controller.js`).
 - **Server:** dependensi diinstall (`npm install`) dan server berhasil dijalankan dengan `nodemon`.
-- **Rekomendasi selanjutnya:** pisahkan logika bisnis ke `src/services/`, tambahkan unit/integration tests, atau integrasikan penyimpanan foto (S3/R2) menggantikan dummy keys.
-
-```
-
-*(Catatan: saat ini foto belum benar-benar diupload ke storage — masih pakai path dummy sementara integrasi MinIO belum selesai)*
+- **Catatan Phase 6:** dummy upload key sudah dihentikan. Upload tidak membuat row `check_photos` sampai storage real berhasil menyimpan objek foto dan thumbnail.
 
 ---
 

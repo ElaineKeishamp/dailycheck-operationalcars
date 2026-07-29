@@ -14,6 +14,7 @@ import { useDailyCheckSession } from '../../hooks/useDailyCheckSession';
 import { useDriverVehicles } from '../../hooks/useDriverVehicles';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { usePhotoChecklistDrafts } from '../../hooks/usePhotoChecklistDrafts';
+import { usePhotoUploads } from '../../hooks/usePhotoUploads';
 import { canStartDriverChecking } from '../../utils/driverPreparation';
 
 export default function DriverDashboardPage() {
@@ -47,6 +48,15 @@ export default function DriverDashboardPage() {
     requiredTotal,
     allRequiredCaptured,
   } = usePhotoChecklistDrafts();
+  const {
+    uploadStates,
+    uploadPhoto,
+    retryUpload,
+    isUploadingAny,
+    hasUploadFailures,
+    uploadedRequiredCount,
+    allRequiredUploaded,
+  } = usePhotoUploads();
   const [selectedChecklistItem, setSelectedChecklistItem] = useState(null);
   const [cameraPreparationError, setCameraPreparationError] = useState(null);
   const isSharedAccount = Boolean(user?.is_shared_account);
@@ -109,13 +119,28 @@ export default function DriverDashboardPage() {
   };
 
   const handleAcceptPhoto = ({ blob, capturedAt }) => {
-    savePhotoDraft({
+    const acceptedDraft = {
       checklistId: selectedChecklistItem.checklistId,
       partType: selectedChecklistItem.partType,
       partIndex: selectedChecklistItem.partIndex,
       label: selectedChecklistItem.label,
       blob,
       capturedAt,
+    };
+
+    savePhotoDraft(acceptedDraft);
+    uploadPhoto({
+      dailyCheckId: dailyCheck?.daily_id,
+      draft: acceptedDraft,
+    });
+  };
+
+  const handleRetryUpload = (draft) => {
+    if (!draft) return;
+
+    retryUpload({
+      dailyCheckId: dailyCheck?.daily_id,
+      draft,
     });
   };
 
@@ -156,7 +181,11 @@ export default function DriverDashboardPage() {
                 </div>
               )}
 
-              <ChecklistProgress completedCount={requiredCapturedCount} totalCount={requiredTotal} />
+              <ChecklistProgress
+                capturedCount={requiredCapturedCount}
+                uploadedCount={uploadedRequiredCount}
+                totalCount={requiredTotal}
+              />
 
               <section className="space-y-3" aria-label="Checklist foto standar">
                 {STANDARD_PHOTO_ITEMS.map((item) => (
@@ -165,6 +194,7 @@ export default function DriverDashboardPage() {
                     item={item}
                     isCaptured={Boolean(photoDrafts[item.id])}
                     disabled={!canOpenCamera}
+                    uploadState={uploadStates[item.id]}
                     onOpenCamera={() => handleOpenCamera({
                       checklistId: item.id,
                       partType: item.id,
@@ -172,6 +202,7 @@ export default function DriverDashboardPage() {
                       label: item.label,
                       isOptional: false,
                     })}
+                    onRetryUpload={() => handleRetryUpload(photoDrafts[item.id])}
                   />
                 ))}
               </section>
@@ -179,12 +210,15 @@ export default function DriverDashboardPage() {
               <TireChecklistGrid
                 photoDrafts={photoDrafts}
                 disabled={!canOpenCamera}
+                uploadStates={uploadStates}
                 onOpenCamera={handleOpenCamera}
+                onRetryUpload={handleRetryUpload}
               />
 
               <OptionalPhotoCard
                 isCaptured={Boolean(photoDrafts.lainnya)}
                 disabled={!canOpenCamera}
+                uploadState={uploadStates.lainnya}
                 onOpenCamera={() => handleOpenCamera({
                   checklistId: 'lainnya',
                   partType: 'lainnya',
@@ -192,12 +226,20 @@ export default function DriverDashboardPage() {
                   label: 'Foto Tambahan',
                   isOptional: true,
                 })}
+                onRetryUpload={() => handleRetryUpload(photoDrafts.lainnya)}
               />
             </>
           )}
         </div>
 
-        {isSessionActive && <SubmitReportSection allRequiredCaptured={allRequiredCaptured} />}
+        {isSessionActive && (
+          <SubmitReportSection
+            allRequiredCaptured={allRequiredCaptured}
+            allRequiredUploaded={allRequiredUploaded}
+            isUploadingAny={isUploadingAny}
+            hasUploadFailures={hasUploadFailures}
+          />
+        )}
       </main>
 
       {selectedChecklistItem && canOpenCamera && (

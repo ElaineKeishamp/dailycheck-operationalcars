@@ -1,6 +1,27 @@
 import { Send } from 'lucide-react';
 
-export default function SubmitReportSection({ allRequiredCaptured }) {
+function getSubmitHint({ allRequiredCaptured, allRequiredUploaded, isUploadingAny, hasUploadFailures }) {
+  if (!allRequiredCaptured) {
+    return 'Selesaikan semua foto wajib untuk melanjutkan.';
+  }
+
+  if (hasUploadFailures) {
+    return 'Beberapa foto gagal diupload. Coba ulangi upload yang gagal.';
+  }
+
+  if (isUploadingAny || !allRequiredUploaded) {
+    return 'Tunggu hingga seluruh foto selesai diupload.';
+  }
+
+  return 'Semua foto berhasil diupload. Submit laporan akan diaktifkan pada tahap berikutnya.';
+}
+
+export default function SubmitReportSection({
+  allRequiredCaptured,
+  allRequiredUploaded,
+  isUploadingAny,
+  hasUploadFailures,
+}) {
   return (
     <section className="sticky bottom-0 -mx-4 px-4 pt-3 pb-4 bg-slate-50/95 backdrop-blur border-t border-slate-200">
       <div className="mx-auto max-w-2xl">
@@ -13,9 +34,7 @@ export default function SubmitReportSection({ allRequiredCaptured }) {
           Submit Laporan
         </button>
         <p className="mt-2 text-center text-xs text-slate-500">
-          {allRequiredCaptured
-            ? 'Semua foto sudah diambil. Upload foto akan dilakukan pada tahap berikutnya.'
-            : 'Selesaikan semua foto wajib untuk melanjutkan.'}
+          {getSubmitHint({ allRequiredCaptured, allRequiredUploaded, isUploadingAny, hasUploadFailures })}
         </p>
       </div>
     </section>

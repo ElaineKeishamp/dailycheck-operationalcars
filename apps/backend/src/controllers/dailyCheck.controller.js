@@ -1,6 +1,11 @@
 const userModel = require('../models/user.model');
 const vehicleModel = require('../models/vehicle.model');
 const dailyCheckModel = require('../models/dailyCheck.model');
+const {
+  STORAGE_UNAVAILABLE_CODE,
+  deleteStoredCheckPhoto,
+  storeCheckPhoto,
+} = require('../services/photoStorage.service');
 
 async function startDailyCheck(req, res) {
   const { vehicle_id, actual_driver_name, gps_lat, gps_long, gps_address } = req.body;
@@ -53,26 +58,51 @@ async function uploadPhoto(req, res) {
     return res.status(400).json({ error: 'part_type tidak valid' });
   }
 
+  if (!req.file) {
+    return res.status(400).json({ error: 'Foto wajib diupload' });
+  }
+
   try {
-    const dailyCheck = await dailyCheckModel.findByIdAndUser(dailyCheckId, req.user.id);
+    const dailyCheck = await dailyCheckModel.findById(dailyCheckId);
     if (!dailyCheck) {
       return res.status(404).json({ error: 'Daily check tidak ditemukan' });
     }
 
-    const timestamp = Date.now();
-    const dummyKey = `dummy/${req.user.id}/${part_type}_${timestamp}.webp`;
-    const dummyThumbKey = `dummy/${req.user.id}/thumb_${part_type}_${timestamp}.webp`;
+    if (String(dailyCheck.users_id) !== String(req.user.id)) {
+      return res.status(403).json({ error: 'Daily check bukan milik user ini' });
+    }
 
-    const photo = await dailyCheckModel.addPhoto({
-      daily_id: dailyCheckId,
-      part_type,
-      r2_key: dummyKey,
-      thumbnail_key: dummyThumbKey,
-      note,
+    if (dailyCheck.status !== 'incomplete') {
+      return res.status(409).json({ error: 'Daily check sudah disubmit' });
+    }
+
+    const storedPhoto = await storeCheckPhoto({
+      file: req.file,
+      dailyCheckId,
+      userId: req.user.id,
+      partType: part_type,
     });
+
+    let photo;
+    try {
+      photo = await dailyCheckModel.addPhoto({
+        daily_id: dailyCheckId,
+        part_type,
+        r2_key: storedPhoto.r2_key,
+        thumbnail_key: storedPhoto.thumbnail_key,
+        note,
+      });
+    } catch (err) {
+      await deleteStoredCheckPhoto(storedPhoto).catch(() => undefined);
+      throw err;
+    }
 
     res.status(201).json({ photo });
   } catch (err) {
+    if (err.code === STORAGE_UNAVAILABLE_CODE) {
+      return res.status(503).json({ error: 'Penyimpanan foto belum dikonfigurasi' });
+    }
+
     console.error(err);
     res.status(500).json({ error: 'Terjadi kesalahan server' });
   }
