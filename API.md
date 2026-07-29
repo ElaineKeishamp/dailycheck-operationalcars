@@ -150,46 +150,49 @@ Driver mulai sesi checking harian.
 
 ---
 
-## POST /daily-checks/:dailyCheckId/photos
-Upload foto per bagian mobil. Dipanggil berkali-kali (1 kali per foto).
+## GET /daily-checks/active
+Ambil sesi checking hari ini yang masih bisa dilanjutkan untuk kendaraan tertentu.
 
 **Headers:** `Authorization: Bearer <token>`
 
-**Request Body:**
+**Query params:**
+- `vehicle_id` - wajib.
+
+**Response jika ada sesi aktif (200):**
 ```json
 {
-  "part_type": "odo | body_kiri | body_kanan | kap | depan | belakang | interior | ban | lainnya",
-  "note": "opsional"
+  "daily_check": {
+    "daily_id": "uuid",
+    "vehicle_id": "uuid",
+    "status": "incomplete",
+    "vehicle": {
+      "plate_number": "BK 1234 AB",
+      "brand": "Toyota",
+      "model": "Avanza"
+    }
+  }
 }
 ```
 
-**Catatan buat frontend:** untuk `ban`, panggil endpoint ini 4 kali (1 per foto ban). Untuk `body_kiri`/`body_kanan`, boleh dipanggil lebih dari 1 kali kalau mau lebih dari 1 foto.
-
-**Response Sukses (201):**
+**Response jika tidak ada sesi aktif (200):**
 ```json
-{ "photo": { "check_photos_id": "...", "part_type": "odo", ... } }
-
----
-
-**Catatan Pengerjaan Backend (2026-07-28)**
-
-- **Validation:** ditambahkan dependency `express-validator` dan middleware `src/middlewares/validate.js`. Routes yang diperbarui: `src/routes/auth.routes.js`, `src/routes/dailyCheck.routes.js`, `src/routes/admin.routes.js`.
-- **Model layer:** sudah ada model terpisah di `src/models/` — `user.model.js`, `vehicle.model.js`, `dailyCheck.model.js`, `checkPhoto.model.js`.
-- **Controllers:** `src/controllers/` sudah memanggil model-layer (e.g., `auth.controller.js`, `admin.controller.js`, `dailyCheck.controller.js`).
-- **Server:** dependensi diinstall (`npm install`) dan server berhasil dijalankan dengan `nodemon`.
-- **Rekomendasi selanjutnya:** pisahkan logika bisnis ke `src/services/`, tambahkan unit/integration tests, atau integrasikan penyimpanan foto (S3/R2) menggantikan dummy keys.
-
+{ "daily_check": null }
 ```
 
-*(Catatan: saat ini foto belum benar-benar diupload ke storage — masih pakai path dummy sementara integrasi MinIO belum selesai)*
+Endpoint ini hanya mengembalikan sesi milik user yang sedang login dan hanya untuk status `incomplete`.
 
 ---
 
 ## Alur Upload Foto MinIO (Driver)
 
-1. **Minta Presigned Upload URL**: Driver panggil `POST /daily-checks/:dailyCheckId/photo-url` dengan `{ "part_type": "odo" }`. Backend merespon `upload_url` & `key`.
-2. **Upload File ke MinIO**: Driver meng-upload file foto secara langsung ke MinIO menggunakan HTTP `PUT` ke `upload_url` tersebut (`headers: { "Content-Type": "image/webp" }`).
-3. **Simpan Metadata Foto**: Driver panggil `POST /daily-checks/:dailyCheckId/photos` dengan `{ "part_type": "odo", "key": "key_dari_step_1" }` untuk menyimpan data foto ke database.
+Upload foto driver memakai satu flow presigned MinIO:
+
+1. Driver meminta URL upload ke backend.
+2. Driver mengirim Blob/JPEG langsung ke MinIO dengan `PUT`.
+3. Driver mengonfirmasi key ke backend.
+4. Backend memverifikasi object ada di MinIO, lalu menyimpan row `check_photos`.
+
+Frontend tidak mengirim `multipart/form-data` ke backend untuk upload foto.
 
 ---
 
@@ -202,19 +205,30 @@ Minta Presigned Upload URL ke MinIO Object Storage untuk mengunggah foto.
 ```json
 {
   "part_type": "odo",
-  "content_type": "image/webp"
+  "part_index": null,
+  "content_type": "image/jpeg"
 }
 ```
+
+Untuk ban, gunakan `part_type: "ban"` dan `part_index` 1 sampai 4. Untuk part selain `ban`, `part_index` harus `null` atau tidak dikirim.
 
 **Response Sukses (200):**
 ```json
 {
-  "upload_url": "http://localhost:9000/dailycheck-photos/inspections/2026/uuid/odo_12345.webp?X-Amz-Algorithm=...",
-  "key": "inspections/2026/uuid/odo_12345.webp",
+  "upload_url": "http://localhost:9000/dailycheck-photos/inspections/2026/uuid/odo_12345.jpg?X-Amz-Algorithm=...",
+  "key": "inspections/2026/uuid/odo_12345.jpg",
   "part_type": "odo",
+  "part_index": null,
   "expires_in": 300
 }
 ```
+
+**Validasi:**
+- Daily check harus milik user yang sedang login.
+- Status daily check harus `incomplete`.
+- `content_type` harus `image/jpeg`, `image/png`, atau `image/webp`.
+- Backend yang membuat object key; client tidak boleh mengirim key buatan sendiri pada tahap ini.
+- Slot foto yang sudah ada akan ditolak dengan `409`.
 
 ---
 
@@ -227,10 +241,13 @@ Konfirmasi pendaftaran foto setelah berhasil di-upload ke MinIO.
 ```json
 {
   "part_type": "odo",
-  "key": "inspections/2026/uuid/odo_12345.webp",
+  "part_index": null,
+  "key": "inspections/2026/uuid/odo_12345.jpg",
   "note": "Kondisi baik, lecet halus"
 }
 ```
+
+Backend memverifikasi key berada di namespace daily check yang benar dan object sudah ada di MinIO sebelum membuat row database.
 
 **Response Sukses (201):**
 ```json
@@ -239,38 +256,123 @@ Konfirmasi pendaftaran foto setelah berhasil di-upload ke MinIO.
     "check_photos_id": "uuid",
     "daily_id": "uuid",
     "part_type": "odo",
-    "r2_key": "inspections/2026/uuid/odo_12345.webp",
-    "thumbnail_key": "thumb_inspections/2026/uuid/odo_12345.webp",
+    "part_index": null,
+    "r2_key": "inspections/2026/uuid/odo_12345.jpg",
+    "thumbnail_key": "thumb_inspections/2026/uuid/odo_12345.jpg",
     "note": "Kondisi baik, lecet halus",
-    "url": "http://localhost:9000/dailycheck-photos/inspections/2026/uuid/odo_12345.webp?X-Amz-..."
+    "url": "http://localhost:9000/dailycheck-photos/inspections/2026/uuid/odo_12345.jpg?X-Amz-..."
   }
 }
 ```
 
+**Rules `part_index`:**
+- `ban` wajib memakai integer `1`, `2`, `3`, atau `4`.
+- Part selain `ban` harus `null` atau tidak mengirim `part_index`.
+- Legacy row ban lama dengan `part_index = null` dianggap ambigu.
+
+**Duplicate slot:**
+- Satu daily check hanya boleh punya satu row per logical slot.
+- Contoh: satu `odo`, satu `kap`, satu `ban` dengan `part_index=1`.
+- `lainnya` saat ini juga satu slot per daily check sesuai UI driver.
+
+**Response gagal:**
+- `400` - part/key/content tidak valid
+- `404` - daily check tidak ditemukan atau object belum ada di MinIO
+- `409` - daily check sudah submitted atau slot foto sudah ada
+- `500` - kegagalan server/storage/database
+
 ---
 
-## POST /daily-checks/:dailyCheckId/submit
-Submit laporan setelah semua foto wajib terupload.
+## GET /daily-checks/:dailyCheckId/photos
+Ambil daftar foto yang sudah terkonfirmasi untuk sesi driver.
 
 **Headers:** `Authorization: Bearer <token>`
 
 **Response Sukses (200):**
 ```json
-{ "message": "Laporan berhasil disubmit", "daily_check": { "status": "submitted", ... } }
-```
-
-**Response Gagal (400) — belum lengkap:**
-```json
 {
-  "error": "Laporan belum lengkap",
-  "missing_parts": ["kap", "ban (baru 0/4 foto)"]
+  "photos": [
+    {
+      "check_photos_id": "uuid",
+      "daily_id": "uuid",
+      "part_type": "ban",
+      "part_index": 1,
+      "r2_key": "inspections/2026/uuid/ban_1_12345.jpg",
+      "thumbnail_key": "thumb_inspections/2026/uuid/ban_1_12345.jpg",
+      "note": null,
+      "created_at": "2026-07-29T..."
+    }
+  ]
 }
 ```
 
-**Catatan buat frontend:** tampilkan `missing_parts` ke user biar tau bagian mana yang belum difoto.
+Jika belum ada foto:
+```json
+{ "photos": [] }
+```
+
+Endpoint ini hanya mengembalikan foto untuk daily check milik user yang sedang login.
 
 ---
+## POST /daily-checks/:dailyCheckId/submit
+Submit laporan setelah semua sebelas foto wajib punya record `check_photos` yang sudah tersimpan.
 
+**Headers:** `Authorization: Bearer <token>`
+
+**Required persisted logical slots:**
+- `odo`
+- `body_kiri`
+- `body_kanan`
+- `kap`
+- `depan`
+- `belakang`
+- `interior`
+- `ban` dengan `part_index = 1`
+- `ban` dengan `part_index = 2`
+- `ban` dengan `part_index = 3`
+- `ban` dengan `part_index = 4`
+
+Foto `lainnya` bersifat opsional dan tidak memblokir submit. Legacy row `ban` dengan `part_index = null` tidak memenuhi slot ban wajib.
+
+**Response Sukses (200):**
+```json
+{
+  "message": "Laporan berhasil disubmit",
+  "daily_check": {
+    "daily_id": "uuid",
+    "status": "submitted"
+  }
+}
+```
+
+Final status yang digunakan backend saat ini adalah `submitted`.
+
+**Response Gagal (400) - foto wajib belum lengkap:**
+```json
+{
+  "error": "Foto wajib belum lengkap",
+  "missing_parts": [
+    {
+      "part_type": "kap",
+      "part_index": null,
+      "checklist_id": "kap"
+    },
+    {
+      "part_type": "ban",
+      "part_index": 3,
+      "checklist_id": "ban_3"
+    }
+  ]
+}
+```
+
+**Response gagal lain:**
+- `401` - token kosong/tidak valid mengikuti auth middleware
+- `404` - daily check tidak ditemukan atau bukan milik user login
+- `409` - laporan sudah pernah dikirim
+- `500` - kegagalan server/database
+
+---
 ## GET /admin/daily-checks
 Lihat semua laporan daily check. Bisa difilter.
 

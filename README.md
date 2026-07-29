@@ -11,18 +11,19 @@ Panduan singkat untuk menjalankan project lokal (backend + frontend) agar tim fr
 - `apps/frontend` — aplikasi Vite + React
 
 ## Siapkan environment
-- Salin berkas `.env` pada `apps/backend` (jangan commit `.env`):
+- Salin `apps/backend/.env.example` menjadi `apps/backend/.env` (jangan commit `.env`).
+- Ganti semua placeholder dengan nilai lokal atau rahasia development milik Anda.
 
 ```
 PORT=3000
-DATABASE_URL=postgresql://postgres:password@localhost:5432/dailycheck_dev
-JWT_SECRET=rahasia_tes
+DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/DATABASE
+JWT_SECRET=replace-with-a-random-secret
 
 # MinIO Object Storage
 S3_ENDPOINT=http://localhost:9000
 S3_REGION=us-east-1
-S3_ACCESS_KEY=minioadmin
-S3_SECRET_KEY=minioadmin
+S3_ACCESS_KEY=replace-me
+S3_SECRET_KEY=replace-me
 S3_BUCKET_NAME=dailycheck-photos
 ```
 
@@ -32,7 +33,8 @@ S3_BUCKET_NAME=dailycheck-photos
    minio.exe server C:\minio-data --console-address ":9001"
    ```
    * S3 API: `http://localhost:9000`
-   * Web Dashboard: `http://localhost:9001` (Credentials: `minioadmin` / `minioadmin`)
+   * Web Dashboard: `http://localhost:9001`
+   * Gunakan access key dan secret key yang Anda set untuk server MinIO lokal.
 
 2. **Uji Coba Otomatis MinIO (Upload & Presigned View URL)**:
    ```bash

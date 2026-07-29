@@ -9,6 +9,23 @@ async function findByVehicleAndDate(vehicleId, date = 'CURRENT_DATE') {
   return result.rows[0] || null;
 }
 
+async function findActiveByVehicleAndUser(vehicleId, userId) {
+  const result = await pool.query(
+    `SELECT dc.*, v.plate_number, v.brand, v.model
+     FROM daily_checks dc
+     JOIN vehicles v ON dc.vehicle_id = v.vehicle_id
+     WHERE dc.vehicle_id = $1
+       AND dc.users_id = $2
+       AND dc.check_date = CURRENT_DATE
+       AND dc.status = 'incomplete'
+       AND dc.deleted_at IS NULL
+     ORDER BY dc.created_at DESC
+     LIMIT 1`,
+    [vehicleId, userId]
+  );
+  return result.rows[0] || null;
+}
+
 async function findByIdAndUser(dailyId, userId) {
   const result = await pool.query(
     'SELECT * FROM daily_checks WHERE daily_id = $1 AND users_id = $2',
@@ -100,17 +117,35 @@ async function getPhotosByDailyId(dailyId) {
   return result.rows;
 }
 
-async function addPhoto({ daily_id, part_type, r2_key, thumbnail_key, note }) {
+async function findPhotoByLogicalSlot({ daily_id, part_type, part_index }) {
+  const params = [daily_id, part_type];
+  let query = 'SELECT * FROM check_photos WHERE daily_id = $1 AND part_type = $2';
+
+  if (part_type === 'ban') {
+    params.push(part_index);
+    query += ' AND part_index = $3';
+  } else {
+    query += ' AND part_index IS NULL';
+  }
+
+  query += ' LIMIT 1';
+
+  const result = await pool.query(query, params);
+  return result.rows[0] || null;
+}
+
+async function addPhoto({ daily_id, part_type, part_index, r2_key, thumbnail_key, note }) {
   const result = await pool.query(
-    `INSERT INTO check_photos (daily_id, part_type, r2_key, thumbnail_key, note)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [daily_id, part_type, r2_key, thumbnail_key, note || null]
+    `INSERT INTO check_photos (daily_id, part_type, part_index, r2_key, thumbnail_key, note)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [daily_id, part_type, part_index ?? null, r2_key, thumbnail_key, note || null]
   );
   return result.rows[0];
 }
 
 module.exports = {
   findByVehicleAndDate,
+  findActiveByVehicleAndUser,
   findByIdAndUser,
   findById,
   createDailyCheck,
@@ -119,5 +154,6 @@ module.exports = {
   getCheckedTodayVehicleIds,
   getAllReports,
   getPhotosByDailyId,
+  findPhotoByLogicalSlot,
   addPhoto,
 };

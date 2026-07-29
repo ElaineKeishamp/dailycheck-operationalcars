@@ -1,0 +1,41 @@
+# Driver Flow QA Checklist
+
+Use this checklist for focused regression passes on the driver daily-check flow. It intentionally avoids admin-only behavior, offline/PWA behavior, and photo replace/delete flows.
+
+## Start Session
+
+- Log in as a driver and confirm `/dashboard` is the only driver entry point.
+- Confirm the vehicle selector is disabled while vehicles are loading or after a session becomes active.
+- Deny location permission and confirm checking cannot start.
+- Grant location permission and confirm checking can start only after a vehicle is selected.
+- For a shared driver account, confirm the actual driver name is required before start.
+
+## Resume Session
+
+- Start a check, leave the page, then return to `/dashboard`.
+- Confirm the active incomplete check is resumed for the selected vehicle.
+- Confirm previously uploaded photo slots are restored before submit is enabled.
+- Confirm restored uploaded slots cannot be captured again from the driver page.
+
+## Photo Capture And Upload
+
+- Capture each standard required photo slot.
+- Capture all four tire slots and confirm each tire slot is treated independently.
+- Confirm every accepted photo includes the watermark with date/time and GPS coordinates.
+- Simulate a failed upload and confirm retry is available without enabling submit.
+- Confirm the frontend uses the presigned URL flow and does not send `multipart/form-data`.
+
+## Submit
+
+- Confirm submit remains disabled while photos are loading, uploading, failed, or incomplete.
+- Submit only after all required slots are uploaded.
+- Confirm the UI switches to a completed state after backend status is `submitted`.
+- Attempt a duplicate submit and confirm the driver UI remains locked or completed.
+- Confirm the completed state does not imply a submit timestamp unless the backend provides one.
+
+## Accessibility And Mobile
+
+- Open the camera overlay and confirm keyboard focus moves into it and returns after close.
+- Open the submit confirmation dialog and confirm keyboard focus moves into it and returns after close.
+- Confirm Escape closes the submit dialog when it is not submitting.
+- Check a narrow mobile viewport for clipped labels, overlapping sticky submit controls, and unusable buttons.

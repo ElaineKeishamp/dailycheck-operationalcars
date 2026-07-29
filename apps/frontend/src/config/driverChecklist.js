@@ -9,10 +9,21 @@ export const STANDARD_PHOTO_ITEMS = [
 ];
 
 export const TIRE_CHECKLIST_ITEMS = [
-  { id: 'ban_kanan_depan', title: 'Ban 1', label: 'Kanan Depan' },
-  { id: 'ban_kiri_depan', title: 'Ban 2', label: 'Kiri Depan' },
-  { id: 'ban_kanan_belakang', title: 'Ban 3', label: 'Kanan Belakang' },
-  { id: 'ban_kiri_belakang', title: 'Ban 4', label: 'Kiri Belakang' },
+  { id: 'ban_1', title: 'Ban 1', label: 'Kanan Depan', partIndex: 1 },
+  { id: 'ban_2', title: 'Ban 2', label: 'Kiri Depan', partIndex: 2 },
+  { id: 'ban_3', title: 'Ban 3', label: 'Kanan Belakang', partIndex: 3 },
+  { id: 'ban_4', title: 'Ban 4', label: 'Kiri Belakang', partIndex: 4 },
 ];
 
 export const REQUIRED_CHECKLIST_TOTAL = STANDARD_PHOTO_ITEMS.length + TIRE_CHECKLIST_ITEMS.length;
+
+export function getChecklistLabel(checklistId) {
+  const standardItem = STANDARD_PHOTO_ITEMS.find((item) => item.id === checklistId);
+  if (standardItem) return standardItem.label;
+
+  const tireItem = TIRE_CHECKLIST_ITEMS.find((item) => item.id === checklistId);
+  if (tireItem) return `${tireItem.title} - ${tireItem.label}`;
+
+  if (checklistId === 'lainnya') return 'Foto Tambahan';
+  return checklistId;
+}
