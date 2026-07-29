@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import ActiveDailyCheckStatus from '../../components/driver/ActiveDailyCheckStatus';
+import CameraCaptureOverlay from '../../components/driver/CameraCaptureOverlay';
 import ChecklistProgress from '../../components/driver/ChecklistProgress';
 import DriverHeader from '../../components/driver/DriverHeader';
 import OptionalPhotoCard from '../../components/driver/OptionalPhotoCard';
@@ -7,11 +8,12 @@ import PhotoChecklistCard from '../../components/driver/PhotoChecklistCard';
 import SubmitReportSection from '../../components/driver/SubmitReportSection';
 import TireChecklistGrid from '../../components/driver/TireChecklistGrid';
 import VehicleSelectionCard from '../../components/driver/VehicleSelectionCard';
-import { STANDARD_PHOTO_ITEMS, REQUIRED_CHECKLIST_TOTAL } from '../../config/driverChecklist';
+import { STANDARD_PHOTO_ITEMS } from '../../config/driverChecklist';
 import { useAuth } from '../../context/useAuth';
 import { useDailyCheckSession } from '../../hooks/useDailyCheckSession';
 import { useDriverVehicles } from '../../hooks/useDriverVehicles';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { usePhotoChecklistDrafts } from '../../hooks/usePhotoChecklistDrafts';
 import { canStartDriverChecking } from '../../utils/driverPreparation';
 
 export default function DriverDashboardPage() {
@@ -38,6 +40,15 @@ export default function DriverDashboardPage() {
     startDailyCheck,
     clearError: clearSessionError,
   } = useDailyCheckSession();
+  const {
+    photoDrafts,
+    savePhotoDraft,
+    requiredCapturedCount,
+    requiredTotal,
+    allRequiredCaptured,
+  } = usePhotoChecklistDrafts();
+  const [selectedChecklistItem, setSelectedChecklistItem] = useState(null);
+  const [cameraPreparationError, setCameraPreparationError] = useState(null);
   const isSharedAccount = Boolean(user?.is_shared_account);
   const isSessionActive = sessionStatus === 'active' && Boolean(dailyCheck);
   const selectedVehicle = useMemo(() => {
@@ -78,6 +89,36 @@ export default function DriverDashboardPage() {
     });
   };
 
+  const canOpenCamera = isSessionActive
+    && coordinates
+    && Number.isFinite(coordinates.latitude)
+    && Number.isFinite(coordinates.longitude);
+
+  const handleOpenCamera = (checklistItem) => {
+    if (!canOpenCamera) {
+      setCameraPreparationError('Lokasi checking belum tersedia. Kamera belum dapat dibuka.');
+      return;
+    }
+
+    setCameraPreparationError(null);
+    setSelectedChecklistItem(checklistItem);
+  };
+
+  const handleCloseCamera = () => {
+    setSelectedChecklistItem(null);
+  };
+
+  const handleAcceptPhoto = ({ blob, capturedAt }) => {
+    savePhotoDraft({
+      checklistId: selectedChecklistItem.checklistId,
+      partType: selectedChecklistItem.partType,
+      partIndex: selectedChecklistItem.partIndex,
+      label: selectedChecklistItem.label,
+      blob,
+      capturedAt,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <main className="mx-auto w-full max-w-2xl px-4 py-4 sm:py-6">
@@ -109,23 +150,64 @@ export default function DriverDashboardPage() {
             <>
               <ActiveDailyCheckStatus selectedVehicle={selectedVehicle} />
 
-              <ChecklistProgress completedCount={0} totalCount={REQUIRED_CHECKLIST_TOTAL} />
+              {cameraPreparationError && (
+                <div className="rounded-lg border border-red-100 bg-red-50 p-3" role="status" aria-live="polite">
+                  <p className="text-sm text-red-600">{cameraPreparationError}</p>
+                </div>
+              )}
+
+              <ChecklistProgress completedCount={requiredCapturedCount} totalCount={requiredTotal} />
 
               <section className="space-y-3" aria-label="Checklist foto standar">
                 {STANDARD_PHOTO_ITEMS.map((item) => (
-                  <PhotoChecklistCard key={item.id} item={item} />
+                  <PhotoChecklistCard
+                    key={item.id}
+                    item={item}
+                    isCaptured={Boolean(photoDrafts[item.id])}
+                    disabled={!canOpenCamera}
+                    onOpenCamera={() => handleOpenCamera({
+                      checklistId: item.id,
+                      partType: item.id,
+                      partIndex: null,
+                      label: item.label,
+                      isOptional: false,
+                    })}
+                  />
                 ))}
               </section>
 
-              <TireChecklistGrid />
+              <TireChecklistGrid
+                photoDrafts={photoDrafts}
+                disabled={!canOpenCamera}
+                onOpenCamera={handleOpenCamera}
+              />
 
-              <OptionalPhotoCard />
+              <OptionalPhotoCard
+                isCaptured={Boolean(photoDrafts.lainnya)}
+                disabled={!canOpenCamera}
+                onOpenCamera={() => handleOpenCamera({
+                  checklistId: 'lainnya',
+                  partType: 'lainnya',
+                  partIndex: null,
+                  label: 'Foto Tambahan',
+                  isOptional: true,
+                })}
+              />
             </>
           )}
         </div>
 
-        {isSessionActive && <SubmitReportSection />}
+        {isSessionActive && <SubmitReportSection allRequiredCaptured={allRequiredCaptured} />}
       </main>
+
+      {selectedChecklistItem && canOpenCamera && (
+        <CameraCaptureOverlay
+          checklistItem={selectedChecklistItem}
+          coordinates={coordinates}
+          onClose={handleCloseCamera}
+          onAcceptPhoto={handleAcceptPhoto}
+        />
+      )}
     </div>
   );
 }
