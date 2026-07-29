@@ -1,4 +1,4 @@
-import { PlayCircle } from 'lucide-react';
+import { PlayCircle, CheckCircle } from 'lucide-react';
 import LocationPermissionStatus from './LocationPermissionStatus';
 
 function getVehicleOptionLabel(vehicle) {
@@ -27,7 +27,11 @@ export default function VehicleSelectionCard({
   isSessionActive,
 }) {
   const hasVehicleError = Boolean(vehiclesError);
-  const hasNoVehicles = !vehiclesLoading && !hasVehicleError && vehicles.length === 0;
+  // Filter out vehicles that have already been checked today
+  const availableVehicles = vehicles.filter((v) => !v.checked_today);
+  const allVehiclesChecked = vehicles.length > 0 && availableVehicles.length === 0;
+  const hasNoVehicles = !vehiclesLoading && !hasVehicleError && (vehicles.length === 0 || allVehiclesChecked);
+  
   const isStarting = sessionStatus === 'starting';
   const selectDisabled = vehiclesLoading || hasVehicleError || hasNoVehicles || isStarting || isSessionActive;
   const preparationLocked = isStarting || isSessionActive;
@@ -37,6 +41,16 @@ export default function VehicleSelectionCard({
       <h2 className="text-base font-bold text-slate-900 mb-4">Data Mobil</h2>
 
       <div className="space-y-4">
+        {allVehiclesChecked && (
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
+            <CheckCircle size={20} className="text-emerald-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-emerald-800">Semua Mobil Sudah Checked Hari Ini</p>
+              <p className="text-xs text-emerald-600 mt-0.5">Seluruh armada kendaraan operasional telah selesai melewati pemeriksaan fisik harian.</p>
+            </div>
+          </div>
+        )}
+
         <div>
           <label htmlFor="driver-vehicle" className="block text-sm font-medium text-slate-700 mb-1.5">
             Pilih Kendaraan
@@ -50,14 +64,16 @@ export default function VehicleSelectionCard({
           >
             {vehiclesLoading && <option value="">Memuat data kendaraan...</option>}
             {hasVehicleError && <option value="">Gagal memuat kendaraan</option>}
-            {hasNoVehicles && <option value="">Belum ada kendaraan aktif</option>}
-            {!selectDisabled && <option value="">Pilih kendaraan</option>}
-            {!selectDisabled && vehicles.map((vehicle) => (
+            {allVehiclesChecked && <option value="">Semua mobil telah di-checking hari ini</option>}
+            {!allVehiclesChecked && hasNoVehicles && <option value="">Belum ada kendaraan aktif</option>}
+            {!selectDisabled && <option value="">Pilih kendaraan yang belum di-checking</option>}
+            {!selectDisabled && availableVehicles.map((vehicle) => (
               <option key={vehicle.vehicle_id} value={vehicle.vehicle_id}>
                 {getVehicleOptionLabel(vehicle)}
               </option>
             ))}
           </select>
+
           {vehiclesLoading && (
             <p className="mt-1.5 text-xs text-slate-500" aria-live="polite">Memuat daftar kendaraan aktif...</p>
           )}
@@ -73,7 +89,7 @@ export default function VehicleSelectionCard({
               </button>
             </div>
           )}
-          {hasNoVehicles && (
+          {hasNoVehicles && !allVehiclesChecked && (
             <p className="mt-1.5 text-xs text-slate-500" aria-live="polite">Belum ada kendaraan aktif yang tersedia.</p>
           )}
         </div>
@@ -125,7 +141,7 @@ export default function VehicleSelectionCard({
           </div>
         )}
 
-        {!isSessionActive && (
+        {!isSessionActive && !allVehiclesChecked && (
           <button
             type="button"
             disabled={!canStartChecking || isStarting}

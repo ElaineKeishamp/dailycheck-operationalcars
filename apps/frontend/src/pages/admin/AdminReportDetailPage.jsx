@@ -249,35 +249,33 @@ export default function AdminReportDetailPage() {
               <InfoCard label="Waktu Laporan">
                 <div className="flex items-center gap-2">
                   <Clock size={14} className="text-slate-400" />
-                  <span>{formatDateTime(report.check_date || report.created_at)}</span>
+                  <span>{formatDateTime(report.created_at || report.check_date)}</span>
                 </div>
               </InfoCard>
             </div>
           </div>
 
           {/* Summary stat cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {/* Odometer */}
-            <div className="admin-card p-5 col-span-2 sm:col-span-1 flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center">
-                <Gauge size={18} className="text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 font-medium">Odometer</p>
-                <p className="text-xl font-bold text-slate-900">
-                  {report.odometer ? `${Number(report.odometer).toLocaleString('id-ID')} km` : '—'}
-                </p>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Total photos */}
             <div className="admin-card p-5 flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                 <Camera size={18} className="text-blue-600" />
               </div>
               <div>
-                <p className="text-xs text-slate-400 font-medium">Total Foto</p>
-                <p className="text-xl font-bold text-slate-900">{photos.length} <span className="text-sm font-normal text-slate-400">Upload</span></p>
+                <p className="text-xs text-slate-400 font-medium">Total Foto Inspeksi</p>
+                <p className="text-xl font-bold text-slate-900">{photos.length} <span className="text-sm font-normal text-slate-400">Upload MinIO</span></p>
+              </div>
+            </div>
+
+            {/* Verification Status */}
+            <div className="admin-card p-5 flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
+                <Clock size={18} className="text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Status Pengecekan</p>
+                <p className="text-base font-bold text-emerald-700 mt-0.5">Pemeriksaan Lengkap</p>
               </div>
             </div>
           </div>
