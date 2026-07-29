@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Clock, CheckCircle2, History, Calendar } from 'lucide-react';
 import ActiveDailyCheckStatus from '../../components/driver/ActiveDailyCheckStatus';
 import CameraCaptureOverlay from '../../components/driver/CameraCaptureOverlay';
 import ChecklistProgress from '../../components/driver/ChecklistProgress';
@@ -19,6 +20,20 @@ import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { usePhotoChecklistDrafts } from '../../hooks/usePhotoChecklistDrafts';
 import { usePhotoUploads } from '../../hooks/usePhotoUploads';
 import { canStartDriverChecking } from '../../utils/driverPreparation';
+import apiClient from '../../api/client';
+
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())} WIB`;
+}
 
 export default function DriverDashboardPage() {
   const { user } = useAuth();
@@ -38,6 +53,10 @@ export default function DriverDashboardPage() {
 
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const [actualDriverName, setActualDriverName] = useState('');
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [todayCompletedCheck, setTodayCompletedCheck] = useState(null);
+
   const {
     dailyCheck,
     status: sessionStatus,
@@ -72,14 +91,38 @@ export default function DriverDashboardPage() {
   const [submitConfirmationOpen, setSubmitConfirmationOpen] = useState(false);
   const isSharedAccount = Boolean(user?.is_shared_account);
   const isSubmitting = sessionStatus === 'submitting';
-  const isSessionCompleted = sessionStatus === 'completed';
+  const isSessionCompleted = sessionStatus === 'completed' || Boolean(todayCompletedCheck);
   const isSessionActive = sessionStatus === 'active' && Boolean(dailyCheck);
   const isSessionVisible = ['active', 'submitting', 'completed'].includes(sessionStatus) && Boolean(dailyCheck);
+
+  const fetchHistoryAndToday = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const [histRes, todayRes] = await Promise.all([
+        apiClient.get('/daily-checks/my-history').catch(() => ({ data: { reports: [] } })),
+        apiClient.get('/daily-checks/my-today').catch(() => ({ data: { daily_check: null } })),
+      ]);
+      setHistory(histRes.data.reports || []);
+      if (todayRes.data.daily_check && todayRes.data.daily_check.status === 'submitted') {
+        setTodayCompletedCheck(todayRes.data.daily_check);
+      }
+    } catch {
+      // Ignore fallback
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHistoryAndToday();
+  }, [fetchHistoryAndToday]);
+
   const validChecklistIds = useMemo(() => new Set([
     ...STANDARD_PHOTO_ITEMS.map((item) => item.id),
     ...TIRE_CHECKLIST_ITEMS.map((item) => item.id),
     'lainnya',
   ]), []);
+
   const selectedVehicle = useMemo(() => {
     return vehicles.find((vehicle) => vehicle.vehicle_id === selectedVehicleId) || null;
   }, [selectedVehicleId, vehicles]);
@@ -255,6 +298,7 @@ export default function DriverDashboardPage() {
     const submitted = await submitDailyCheck({ dailyCheckId: dailyCheck.daily_id });
     if (submitted) {
       setSubmitConfirmationOpen(false);
+      fetchHistoryAndToday();
       return;
     }
 
@@ -270,27 +314,50 @@ export default function DriverDashboardPage() {
         <div className="space-y-4 pb-4">
           <DriverHeader />
 
-          <VehicleSelectionCard
-            vehicles={vehicles}
-            vehiclesLoading={vehiclesLoading}
-            vehiclesError={vehiclesError}
-            selectedVehicleId={selectedVehicleId}
-            onVehicleChange={setSelectedVehicleId}
-            onRetryVehicles={retryVehicles}
-            locationStatus={locationStatus}
-            coordinates={coordinates}
-            locationErrorMessage={locationErrorMessage}
-            onRetryLocation={requestLocation}
-            isSharedAccount={isSharedAccount}
-            actualDriverName={actualDriverName}
-            onActualDriverNameChange={setActualDriverName}
-            canStartChecking={canStartChecking}
-            onPrepareStartChecking={handlePrepareStartChecking}
-            preparationMessage={sessionMessage}
-            sessionStatus={sessionStatus}
-            sessionError={sessionError}
-            isSessionActive={isSessionVisible}
-          />
+          {/* Post-Checking Completed Banner */}
+          {todayCompletedCheck && !isSessionVisible && (
+            <div className="bg-emerald-600 text-white rounded-xl p-5 shadow-lg flex items-start gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+                <CheckCircle2 size={26} className="text-white" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-bold text-base text-white">Terima Kasih, Checking Hari Ini Selesai!</h3>
+                <p className="text-xs text-emerald-100 leading-relaxed">
+                  Anda telah menyelesaikan seluruh 11 foto pemeriksaan fisik kendaraan{' '}
+                  <span className="font-bold underline">{todayCompletedCheck.plate_number}</span> hari ini pada {formatTime(todayCompletedCheck.created_at)}.
+                </p>
+                <div className="pt-2">
+                  <span className="inline-flex items-center gap-1 bg-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded-md">
+                    ✓ Status: Laporan Disubmit
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!todayCompletedCheck && (
+            <VehicleSelectionCard
+              vehicles={vehicles}
+              vehiclesLoading={vehiclesLoading}
+              vehiclesError={vehiclesError}
+              selectedVehicleId={selectedVehicleId}
+              onVehicleChange={setSelectedVehicleId}
+              onRetryVehicles={retryVehicles}
+              locationStatus={locationStatus}
+              coordinates={coordinates}
+              locationErrorMessage={locationErrorMessage}
+              onRetryLocation={requestLocation}
+              isSharedAccount={isSharedAccount}
+              actualDriverName={actualDriverName}
+              onActualDriverNameChange={setActualDriverName}
+              canStartChecking={canStartChecking}
+              onPrepareStartChecking={handlePrepareStartChecking}
+              preparationMessage={sessionMessage}
+              sessionStatus={sessionStatus}
+              sessionError={sessionError}
+              isSessionActive={isSessionVisible}
+            />
+          )}
 
           {isSessionVisible && (
             <>
@@ -389,6 +456,42 @@ export default function DriverDashboardPage() {
               />
             </>
           )}
+
+          {/* 7-Day Checking History Section */}
+          <section className="bg-white border border-slate-100 rounded-xl shadow-card p-4 mt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <History size={18} className="text-blue-600" />
+              <h3 className="font-bold text-slate-900 text-sm">Riwayat Pengecekan 7 Hari Terakhir</h3>
+            </div>
+
+            {historyLoading ? (
+              <div className="p-4 text-center text-xs text-slate-400">Memuat riwayat pengecekan...</div>
+            ) : history.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 flex flex-col items-center gap-2">
+                <Calendar size={28} className="text-slate-300" />
+                <p className="text-xs font-medium">Belum ada riwayat pengecekan dalam 7 hari terakhir.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {history.map((rep) => (
+                  <div key={rep.daily_id} className="py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">{rep.plate_number} ({rep.brand} {rep.model})</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{formatDate(rep.check_date || rep.created_at)} • {formatTime(rep.created_at)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold text-slate-500">{rep.photo_count} Foto</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        rep.status === 'submitted' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {rep.status === 'submitted' ? 'Selesai' : 'Proses'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
 
         {isSessionVisible && !isSessionCompleted && (

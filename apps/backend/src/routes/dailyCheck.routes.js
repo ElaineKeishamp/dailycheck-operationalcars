@@ -4,6 +4,8 @@ const { verifyToken } = require('../middlewares/auth');
 const {
 	startDailyCheck,
 	getActiveDailyCheck,
+	getMyTodayCheck,
+	getMyHistory,
 	getPhotoUploadUrl,
 	uploadPhoto,
 	getDailyCheckPhotos,
@@ -37,6 +39,9 @@ router.get(
 	],
 	getActiveDailyCheck
 );
+
+router.get('/my-today', verifyToken, getMyTodayCheck);
+router.get('/my-history', verifyToken, getMyHistory);
 
 // Minta Presigned Upload URL ke MinIO
 router.post(

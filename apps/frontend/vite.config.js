@@ -51,6 +51,7 @@ export default defineConfig({
     }),
   ],
   server: {
+    host: true, // Izinkan akses dari jaringan lokal (HP / Tablet)
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
@@ -59,4 +60,3 @@ export default defineConfig({
     },
   },
 })
-

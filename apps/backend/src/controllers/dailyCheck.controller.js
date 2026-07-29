@@ -344,9 +344,31 @@ async function submitDailyCheck(req, res) {
   }
 }
 
+async function getMyTodayCheck(req, res) {
+  try {
+    const todayCheck = await dailyCheckModel.findTodayCheckByDriver(req.user.id);
+    res.json({ daily_check: todayCheck });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Terjadi kesalahan server' });
+  }
+}
+
+async function getMyHistory(req, res) {
+  try {
+    const history = await dailyCheckModel.getDriverHistoryLast7Days(req.user.id);
+    res.json({ reports: history });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Terjadi kesalahan server' });
+  }
+}
+
 module.exports = {
   startDailyCheck,
   getActiveDailyCheck,
+  getMyTodayCheck,
+  getMyHistory,
   getPhotoUploadUrl,
   uploadPhoto,
   getDailyCheckPhotos,

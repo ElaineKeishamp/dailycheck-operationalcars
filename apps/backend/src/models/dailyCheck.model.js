@@ -9,23 +9,6 @@ async function findByVehicleAndDate(vehicleId, date = 'CURRENT_DATE') {
   return result.rows[0] || null;
 }
 
-async function findActiveByVehicleAndUser(vehicleId, userId) {
-  const result = await pool.query(
-    `SELECT dc.*, v.plate_number, v.brand, v.model
-     FROM daily_checks dc
-     JOIN vehicles v ON dc.vehicle_id = v.vehicle_id
-     WHERE dc.vehicle_id = $1
-       AND dc.users_id = $2
-       AND dc.check_date = CURRENT_DATE
-       AND dc.status = 'incomplete'
-       AND dc.deleted_at IS NULL
-     ORDER BY dc.created_at DESC
-     LIMIT 1`,
-    [vehicleId, userId]
-  );
-  return result.rows[0] || null;
-}
-
 async function findByIdAndUser(dailyId, userId) {
   const result = await pool.query(
     'SELECT * FROM daily_checks WHERE daily_id = $1 AND users_id = $2',
@@ -45,6 +28,33 @@ async function findById(dailyId) {
     [dailyId]
   );
   return result.rows[0] || null;
+}
+
+async function findTodayCheckByDriver(userId) {
+  const result = await pool.query(
+    `SELECT dc.*, v.plate_number, v.brand, v.model
+     FROM daily_checks dc
+     JOIN vehicles v ON dc.vehicle_id = v.vehicle_id
+     WHERE dc.users_id = $1 AND dc.check_date = CURRENT_DATE AND dc.deleted_at IS NULL`,
+    [userId]
+  );
+  return result.rows[0] || null;
+}
+
+async function getDriverHistoryLast7Days(userId) {
+  const result = await pool.query(
+    `SELECT dc.daily_id, dc.check_date, dc.status, dc.created_at,
+            v.plate_number, v.brand, v.model,
+            (SELECT COUNT(*) FROM check_photos cp WHERE cp.daily_id = dc.daily_id) as photo_count
+     FROM daily_checks dc
+     JOIN vehicles v ON dc.vehicle_id = v.vehicle_id
+     WHERE dc.users_id = $1
+       AND dc.check_date >= CURRENT_DATE - INTERVAL '7 days'
+       AND dc.deleted_at IS NULL
+     ORDER BY dc.created_at DESC`,
+    [userId]
+  );
+  return result.rows;
 }
 
 async function createDailyCheck({ users_id, vehicle_id, actual_driver_name, gps_lat, gps_long, gps_address }) {
@@ -118,18 +128,12 @@ async function getPhotosByDailyId(dailyId) {
 }
 
 async function findPhotoByLogicalSlot({ daily_id, part_type, part_index }) {
-  const params = [daily_id, part_type];
-  let query = 'SELECT * FROM check_photos WHERE daily_id = $1 AND part_type = $2';
-
-  if (part_type === 'ban') {
-    params.push(part_index);
-    query += ' AND part_index = $3';
-  } else {
-    query += ' AND part_index IS NULL';
-  }
-
-  query += ' LIMIT 1';
-
+  const query = part_index === null || part_index === undefined
+    ? 'SELECT * FROM check_photos WHERE daily_id = $1 AND part_type = $2 AND part_index IS NULL'
+    : 'SELECT * FROM check_photos WHERE daily_id = $1 AND part_type = $2 AND part_index = $3';
+  const params = part_index === null || part_index === undefined
+    ? [daily_id, part_type]
+    : [daily_id, part_type, part_index];
   const result = await pool.query(query, params);
   return result.rows[0] || null;
 }
@@ -138,16 +142,17 @@ async function addPhoto({ daily_id, part_type, part_index, r2_key, thumbnail_key
   const result = await pool.query(
     `INSERT INTO check_photos (daily_id, part_type, part_index, r2_key, thumbnail_key, note)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [daily_id, part_type, part_index ?? null, r2_key, thumbnail_key, note || null]
+    [daily_id, part_type, part_index || null, r2_key, thumbnail_key, note || null]
   );
   return result.rows[0];
 }
 
 module.exports = {
   findByVehicleAndDate,
-  findActiveByVehicleAndUser,
   findByIdAndUser,
   findById,
+  findTodayCheckByDriver,
+  getDriverHistoryLast7Days,
   createDailyCheck,
   updateStatus,
   getCheckedTodayUserIds,
