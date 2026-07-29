@@ -16,3 +16,14 @@ export const TIRE_CHECKLIST_ITEMS = [
 ];
 
 export const REQUIRED_CHECKLIST_TOTAL = STANDARD_PHOTO_ITEMS.length + TIRE_CHECKLIST_ITEMS.length;
+
+export function getChecklistLabel(checklistId) {
+  const standardItem = STANDARD_PHOTO_ITEMS.find((item) => item.id === checklistId);
+  if (standardItem) return standardItem.label;
+
+  const tireItem = TIRE_CHECKLIST_ITEMS.find((item) => item.id === checklistId);
+  if (tireItem) return `${tireItem.title} - ${tireItem.label}`;
+
+  if (checklistId === 'lainnya') return 'Foto Tambahan';
+  return checklistId;
+}

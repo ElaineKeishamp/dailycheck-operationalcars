@@ -315,27 +315,64 @@ Endpoint ini hanya mengembalikan foto untuk daily check milik user yang sedang l
 
 ---
 ## POST /daily-checks/:dailyCheckId/submit
-Submit laporan setelah semua foto wajib terupload.
+Submit laporan setelah semua sebelas foto wajib punya record `check_photos` yang sudah tersimpan.
 
 **Headers:** `Authorization: Bearer <token>`
 
+**Required persisted logical slots:**
+- `odo`
+- `body_kiri`
+- `body_kanan`
+- `kap`
+- `depan`
+- `belakang`
+- `interior`
+- `ban` dengan `part_index = 1`
+- `ban` dengan `part_index = 2`
+- `ban` dengan `part_index = 3`
+- `ban` dengan `part_index = 4`
+
+Foto `lainnya` bersifat opsional dan tidak memblokir submit. Legacy row `ban` dengan `part_index = null` tidak memenuhi slot ban wajib.
+
 **Response Sukses (200):**
 ```json
-{ "message": "Laporan berhasil disubmit", "daily_check": { "status": "submitted", ... } }
-```
-
-**Response Gagal (400) — belum lengkap:**
-```json
 {
-  "error": "Laporan belum lengkap",
-  "missing_parts": ["kap", "ban (baru 0/4 foto)"]
+  "message": "Laporan berhasil disubmit",
+  "daily_check": {
+    "daily_id": "uuid",
+    "status": "submitted"
+  }
 }
 ```
 
-**Catatan buat frontend:** tampilkan `missing_parts` ke user biar tau bagian mana yang belum difoto.
+Final status yang digunakan backend saat ini adalah `submitted`.
+
+**Response Gagal (400) - foto wajib belum lengkap:**
+```json
+{
+  "error": "Foto wajib belum lengkap",
+  "missing_parts": [
+    {
+      "part_type": "kap",
+      "part_index": null,
+      "checklist_id": "kap"
+    },
+    {
+      "part_type": "ban",
+      "part_index": 3,
+      "checklist_id": "ban_3"
+    }
+  ]
+}
+```
+
+**Response gagal lain:**
+- `401` - token kosong/tidak valid mengikuti auth middleware
+- `404` - daily check tidak ditemukan atau bukan milik user login
+- `409` - laporan sudah pernah dikirim
+- `500` - kegagalan server/database
 
 ---
-
 ## GET /admin/daily-checks
 Lihat semua laporan daily check. Bisa difilter.
 

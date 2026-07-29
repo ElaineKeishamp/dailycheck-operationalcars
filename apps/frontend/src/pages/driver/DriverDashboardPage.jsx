@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import ActiveDailyCheckStatus from '../../components/driver/ActiveDailyCheckStatus';
 import CameraCaptureOverlay from '../../components/driver/CameraCaptureOverlay';
 import ChecklistProgress from '../../components/driver/ChecklistProgress';
+import DailyCheckCompletedStatus from '../../components/driver/DailyCheckCompletedStatus';
 import DriverHeader from '../../components/driver/DriverHeader';
 import OptionalPhotoCard from '../../components/driver/OptionalPhotoCard';
 import PhotoChecklistCard from '../../components/driver/PhotoChecklistCard';
+import SubmitConfirmationDialog from '../../components/driver/SubmitConfirmationDialog';
 import SubmitReportSection from '../../components/driver/SubmitReportSection';
 import TireChecklistGrid from '../../components/driver/TireChecklistGrid';
 import VehicleSelectionCard from '../../components/driver/VehicleSelectionCard';
-import { STANDARD_PHOTO_ITEMS, TIRE_CHECKLIST_ITEMS } from '../../config/driverChecklist';
+import { getChecklistLabel, STANDARD_PHOTO_ITEMS, TIRE_CHECKLIST_ITEMS } from '../../config/driverChecklist';
 import { useAuth } from '../../context/useAuth';
 import { useDailyCheckSession } from '../../hooks/useDailyCheckSession';
 import { useDriverVehicles } from '../../hooks/useDriverVehicles';
@@ -39,7 +41,9 @@ export default function DriverDashboardPage() {
     status: sessionStatus,
     error: sessionError,
     message: sessionMessage,
+    missingParts,
     startDailyCheck,
+    submitDailyCheck,
     clearError: clearSessionError,
   } = useDailyCheckSession();
   const {
@@ -63,8 +67,12 @@ export default function DriverDashboardPage() {
   } = usePhotoUploads();
   const [selectedChecklistItem, setSelectedChecklistItem] = useState(null);
   const [cameraPreparationError, setCameraPreparationError] = useState(null);
+  const [submitConfirmationOpen, setSubmitConfirmationOpen] = useState(false);
   const isSharedAccount = Boolean(user?.is_shared_account);
+  const isSubmitting = sessionStatus === 'submitting';
+  const isSessionCompleted = sessionStatus === 'completed';
   const isSessionActive = sessionStatus === 'active' && Boolean(dailyCheck);
+  const isSessionVisible = ['active', 'submitting', 'completed'].includes(sessionStatus) && Boolean(dailyCheck);
   const validChecklistIds = useMemo(() => new Set([
     ...STANDARD_PHOTO_ITEMS.map((item) => item.id),
     ...TIRE_CHECKLIST_ITEMS.map((item) => item.id),
@@ -122,11 +130,20 @@ export default function DriverDashboardPage() {
   };
 
   const canOpenCamera = isSessionActive
+    && !isSubmitting
+    && !isSessionCompleted
     && restoreStatus === 'success'
     && coordinates
     && Number.isFinite(coordinates.latitude)
     && Number.isFinite(coordinates.longitude);
   const checklistDisabled = !canOpenCamera;
+  const canSubmitReport = isSessionActive
+    && restoreStatus === 'success'
+    && allRequiredUploaded
+    && uploadedRequiredCount === requiredTotal
+    && !isUploadingAny
+    && !hasUploadFailures
+    && !isSubmitting;
 
   const handleRetryPhotoStatus = () => {
     if (!dailyCheck?.daily_id) return;
@@ -139,6 +156,11 @@ export default function DriverDashboardPage() {
   };
 
   const handleOpenCamera = (checklistItem) => {
+    if (isSubmitting || isSessionCompleted) {
+      setCameraPreparationError(null);
+      return;
+    }
+
     if (!dailyCheck?.daily_id) {
       setCameraPreparationError('Sesi checking belum tersedia. Kamera belum dapat dibuka.');
       return;
@@ -173,7 +195,12 @@ export default function DriverDashboardPage() {
   };
 
   const handleAcceptPhoto = ({ blob, capturedAt }) => {
-    if (!selectedChecklistItem || uploadStates[selectedChecklistItem.checklistId]?.status === 'uploaded') {
+    if (
+      isSubmitting
+      || isSessionCompleted
+      || !selectedChecklistItem
+      || uploadStates[selectedChecklistItem.checklistId]?.status === 'uploaded'
+    ) {
       return;
     }
 
@@ -194,12 +221,38 @@ export default function DriverDashboardPage() {
   };
 
   const handleRetryUpload = (draft) => {
-    if (!draft) return;
+    if (!draft || isSubmitting || isSessionCompleted) return;
 
     retryUpload({
       dailyCheckId: dailyCheck?.daily_id,
       draft,
     });
+  };
+
+  const handleOpenSubmitConfirmation = () => {
+    if (!canSubmitReport) return;
+    setSubmitConfirmationOpen(true);
+  };
+
+  const handleCloseSubmitConfirmation = () => {
+    if (isSubmitting) return;
+    setSubmitConfirmationOpen(false);
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (!canSubmitReport || !dailyCheck?.daily_id) return;
+
+    setSelectedChecklistItem(null);
+    const submitted = await submitDailyCheck({ dailyCheckId: dailyCheck.daily_id });
+    if (submitted) {
+      setSubmitConfirmationOpen(false);
+      return;
+    }
+
+    setSubmitConfirmationOpen(false);
+    loadUploadedPhotos({
+      dailyCheckId: dailyCheck.daily_id,
+    }).catch(() => undefined);
   };
 
   return (
@@ -227,16 +280,35 @@ export default function DriverDashboardPage() {
             preparationMessage={sessionMessage}
             sessionStatus={sessionStatus}
             sessionError={sessionError}
-            isSessionActive={isSessionActive}
+            isSessionActive={isSessionVisible}
           />
 
-          {isSessionActive && (
+          {isSessionVisible && (
             <>
-              <ActiveDailyCheckStatus selectedVehicle={selectedVehicle} />
+              {isSessionCompleted ? (
+                <DailyCheckCompletedStatus dailyCheck={dailyCheck} selectedVehicle={selectedVehicle} />
+              ) : (
+                <ActiveDailyCheckStatus selectedVehicle={selectedVehicle} />
+              )}
 
               {cameraPreparationError && (
                 <div className="rounded-lg border border-red-100 bg-red-50 p-3" role="status" aria-live="polite">
                   <p className="text-sm text-red-600">{cameraPreparationError}</p>
+                </div>
+              )}
+
+              {sessionError && sessionStatus === 'active' && missingParts.length > 0 && (
+                <div className="rounded-lg border border-amber-100 bg-amber-50 p-3" role="status" aria-live="polite">
+                  <p className="text-sm font-semibold text-amber-800">
+                    Laporan belum dapat dikirim. Masih ada foto wajib yang belum tersimpan.
+                  </p>
+                  <ul className="mt-2 space-y-1 text-sm text-amber-700">
+                    {missingParts.map((part) => (
+                      <li key={`${part.checklist_id}-${part.part_index ?? 'x'}`}>
+                        {getChecklistLabel(part.checklist_id)}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
@@ -310,17 +382,21 @@ export default function DriverDashboardPage() {
           )}
         </div>
 
-        {isSessionActive && (
+        {isSessionVisible && !isSessionCompleted && (
           <SubmitReportSection
             allRequiredCaptured={allRequiredCaptured}
-            allRequiredUploaded={allRequiredUploaded}
+            canSubmit={canSubmitReport}
+            submitting={isSubmitting}
+            completed={isSessionCompleted}
+            restoreStatus={restoreStatus}
             isUploadingAny={isUploadingAny}
             hasUploadFailures={hasUploadFailures}
+            onSubmitClick={handleOpenSubmitConfirmation}
           />
         )}
       </main>
 
-      {selectedChecklistItem && canOpenCamera && (
+      {selectedChecklistItem && canOpenCamera && !isSubmitting && !isSessionCompleted && (
         <CameraCaptureOverlay
           checklistItem={selectedChecklistItem}
           coordinates={coordinates}
@@ -328,6 +404,13 @@ export default function DriverDashboardPage() {
           onAcceptPhoto={handleAcceptPhoto}
         />
       )}
+
+      <SubmitConfirmationDialog
+        open={submitConfirmationOpen}
+        submitting={isSubmitting}
+        onCancel={handleCloseSubmitConfirmation}
+        onConfirm={handleConfirmSubmit}
+      />
     </div>
   );
 }

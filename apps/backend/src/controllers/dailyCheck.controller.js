@@ -5,6 +5,19 @@ const storageService = require('../services/storage.service');
 
 const VALID_PART_TYPES = ['odo', 'body_kiri', 'body_kanan', 'kap', 'depan', 'belakang', 'interior', 'ban', 'lainnya'];
 const VALID_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const REQUIRED_PHOTO_SLOTS = [
+  { part_type: 'odo', part_index: null, checklist_id: 'odo' },
+  { part_type: 'body_kiri', part_index: null, checklist_id: 'body_kiri' },
+  { part_type: 'body_kanan', part_index: null, checklist_id: 'body_kanan' },
+  { part_type: 'kap', part_index: null, checklist_id: 'kap' },
+  { part_type: 'depan', part_index: null, checklist_id: 'depan' },
+  { part_type: 'belakang', part_index: null, checklist_id: 'belakang' },
+  { part_type: 'interior', part_index: null, checklist_id: 'interior' },
+  { part_type: 'ban', part_index: 1, checklist_id: 'ban_1' },
+  { part_type: 'ban', part_index: 2, checklist_id: 'ban_2' },
+  { part_type: 'ban', part_index: 3, checklist_id: 'ban_3' },
+  { part_type: 'ban', part_index: 4, checklist_id: 'ban_4' },
+];
 
 function parsePartIndex(value) {
   if (value === undefined || value === null || value === '') return null;
@@ -75,6 +88,22 @@ function serializeDailyCheck(dailyCheck) {
       model: dailyCheck.model,
     },
   };
+}
+
+function getPhotoSlotKey(partType, partIndex) {
+  return partType === 'ban' ? `${partType}:${partIndex}` : `${partType}:`;
+}
+
+function getMissingRequiredPhotoSlots(photos) {
+  const uploadedSlots = new Set(
+    photos
+      .filter((photo) => photo.part_type !== 'lainnya')
+      .map((photo) => getPhotoSlotKey(photo.part_type, photo.part_index))
+  );
+
+  return REQUIRED_PHOTO_SLOTS.filter((slot) => (
+    !uploadedSlots.has(getPhotoSlotKey(slot.part_type, slot.part_index))
+  ));
 }
 
 async function startDailyCheck(req, res) {
@@ -289,28 +318,19 @@ async function submitDailyCheck(req, res) {
       return res.status(404).json({ error: 'Daily check tidak ditemukan' });
     }
 
+    if (dailyCheck.status !== 'incomplete') {
+      return res.status(409).json({
+        error: 'Laporan checking ini sudah pernah dikirim',
+        daily_check: dailyCheck,
+      });
+    }
+
     const photos = await dailyCheckModel.getPhotosByDailyId(dailyCheckId);
-    const uploadedParts = photos.map(p => p.part_type);
-
-    const requiredSingle = ['odo', 'kap', 'depan', 'belakang', 'interior'];
-    const requiredMulti = ['body_kiri', 'body_kanan'];
-    const banCount = uploadedParts.filter(p => p === 'ban').length;
-
-    const missing = [];
-
-    for (const part of requiredSingle) {
-      if (!uploadedParts.includes(part)) missing.push(part);
-    }
-    for (const part of requiredMulti) {
-      if (!uploadedParts.includes(part)) missing.push(part);
-    }
-    if (banCount < 4) {
-      missing.push(`ban (baru ${banCount}/4 foto)`);
-    }
+    const missing = getMissingRequiredPhotoSlots(photos);
 
     if (missing.length > 0) {
       return res.status(400).json({
-        error: 'Laporan belum lengkap',
+        error: 'Foto wajib belum lengkap',
         missing_parts: missing,
       });
     }
