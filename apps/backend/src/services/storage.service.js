@@ -1,11 +1,20 @@
 const { S3Client, PutObjectCommand, GetObjectCommand, CreateBucketCommand, HeadBucketCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+require('dotenv').config();
 
-const endpoint = process.env.S3_ENDPOINT || 'http://localhost:9000';
-const region = process.env.S3_REGION || 'us-east-1';
-const accessKeyId = process.env.S3_ACCESS_KEY || 'minioadmin';
-const secretAccessKey = process.env.S3_SECRET_KEY || 'minioadmin';
-const bucketName = process.env.S3_BUCKET_NAME || 'dailycheck-photos';
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} environment variable is required`);
+  }
+  return value;
+}
+
+const endpoint = requireEnv('S3_ENDPOINT');
+const region = requireEnv('S3_REGION');
+const accessKeyId = requireEnv('S3_ACCESS_KEY');
+const secretAccessKey = requireEnv('S3_SECRET_KEY');
+const bucketName = requireEnv('S3_BUCKET_NAME');
 
 const s3Client = new S3Client({
   endpoint,
