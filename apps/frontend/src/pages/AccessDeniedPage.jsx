@@ -1,6 +1,6 @@
 import { ShieldOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 export default function AccessDeniedPage() {
   const navigate = useNavigate();
@@ -14,8 +14,7 @@ export default function AccessDeniedPage() {
         </div>
         <h1 className="text-2xl font-bold text-slate-900 mb-2">Akses Ditolak</h1>
         <p className="text-slate-500 mb-6">
-          Anda tidak memiliki izin untuk mengakses halaman ini. 
-          Halaman ini hanya tersedia untuk admin.
+          Anda tidak memiliki izin untuk mengakses halaman ini.
         </p>
         <div className="flex flex-col gap-2">
           <button

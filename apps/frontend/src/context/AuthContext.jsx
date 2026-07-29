@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-
-const AuthContext = createContext(null);
+import { useState, useEffect } from 'react';
+import AuthContext from './authContextValue';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -11,16 +10,21 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
-    if (savedToken && savedUser) {
-      try {
+
+    try {
+      if (savedToken && savedUser) {
         setToken(savedToken);
         setUser(JSON.parse(savedUser));
-      } catch {
+      } else if (savedToken || savedUser) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
+    } catch {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const login = (userData, userToken) => {
@@ -37,12 +41,27 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user');
   };
 
+  const updateUser = (updates) => {
+    setUser((currentUser) => {
+      if (!currentUser) return currentUser;
+
+      const nextUser = {
+        ...currentUser,
+        ...updates,
+      };
+
+      localStorage.setItem('user', JSON.stringify(nextUser));
+      return nextUser;
+    });
+  };
+
   const value = {
     user,
     token,
     loading,
     login,
     logout,
+    updateUser,
     isAdmin: user?.role === 'admin',
     isDriver: user?.role === 'driver',
   };
@@ -54,12 +73,3 @@ export function AuthProvider({ children }) {
   );
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
-
-export default AuthContext;
