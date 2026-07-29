@@ -55,6 +55,14 @@ async function getCheckedTodayUserIds() {
   return result.rows.map(r => r.users_id);
 }
 
+async function getCheckedTodayVehicleIds() {
+  const result = await pool.query(
+    `SELECT DISTINCT vehicle_id FROM daily_checks 
+     WHERE check_date = CURRENT_DATE AND deleted_at IS NULL`
+  );
+  return result.rows.map(r => r.vehicle_id);
+}
+
 async function getAllReports({ date, status }) {
   let query = `
     SELECT dc.daily_id, dc.check_date, dc.status, dc.created_at,
@@ -108,6 +116,7 @@ module.exports = {
   createDailyCheck,
   updateStatus,
   getCheckedTodayUserIds,
+  getCheckedTodayVehicleIds,
   getAllReports,
   getPhotosByDailyId,
   addPhoto,
