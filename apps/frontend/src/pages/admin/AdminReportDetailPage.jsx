@@ -10,6 +10,8 @@ import {
   AlertTriangle,
   Gauge,
   Image as ImageIcon,
+  X,
+  Maximize2,
 } from 'lucide-react';
 import apiClient from '../../api/client';
 import { StatusBadge, RoleBadge } from '../../components/admin/ui/Badge';
@@ -44,32 +46,49 @@ function formatTime(dateStr) {
 }
 
 /**
- * PhotoCard — displays a single photo entry.
- * 
- * NOTE: r2_key / thumbnail_key are currently dummy paths and do not point
- * to real storage URLs. A placeholder icon is shown instead of an actual image.
- * TODO: replace placeholder with real storage URL when R2/storage integration is complete.
+ * PhotoCard — displays a single photo entry with MinIO Presigned URL & click-to-preview.
  */
-function PhotoCard({ photo }) {
+function PhotoCard({ photo, onPreview }) {
   const hasNote = photo.note && photo.note.trim();
   const label = PART_LABELS[photo.part_type] || photo.part_type;
+  const photoUrl = photo.url;
 
   return (
-    <div className="admin-card overflow-hidden group">
-      {/* Photo area — placeholder until storage integration */}
+    <div 
+      className="admin-card overflow-hidden group cursor-pointer hover:border-blue-300 transition-all duration-200"
+      onClick={() => photoUrl && onPreview && onPreview(photo)}
+    >
+      {/* Photo area */}
       <div className="relative bg-slate-100 aspect-[4/3] flex items-center justify-center overflow-hidden">
-        {/* TODO: When r2_key/thumbnail_key returns real URLs, replace this with:
-            <img src={storageUrl} alt={label} className="w-full h-full object-cover" /> */}
-        <div className="flex flex-col items-center gap-2 text-slate-300">
-          <ImageIcon size={36} />
-          <span className="text-xs text-slate-400">Foto belum tersedia</span>
-        </div>
+        {photoUrl ? (
+          <img 
+            src={photoUrl} 
+            alt={label} 
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy" 
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-slate-300 p-4 text-center">
+            <ImageIcon size={36} />
+            <span className="text-xs text-slate-400">Foto belum tersedia</span>
+          </div>
+        )}
+
+        {/* Hover zoom overlay */}
+        {photoUrl && (
+          <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <span className="bg-white/90 text-slate-800 text-xs font-semibold px-3 py-1.5 rounded-full shadow flex items-center gap-1.5">
+              <Maximize2 size={13} />
+              Perbesar Foto
+            </span>
+          </div>
+        )}
 
         {/* Damage badge overlay */}
         {hasNote && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow">
+          <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow z-10">
             <AlertTriangle size={11} />
-            LECET
+            CATATAN
           </div>
         )}
       </div>
@@ -78,7 +97,7 @@ function PhotoCard({ photo }) {
       <div className="p-3">
         <p className="text-sm font-semibold text-slate-800">{label}</p>
         {hasNote ? (
-          <p className="text-xs text-red-600 mt-0.5">{photo.note}</p>
+          <p className="text-xs text-red-600 mt-0.5 line-clamp-2">{photo.note}</p>
         ) : (
           <p className="text-xs text-slate-400 mt-0.5">Kondisi Normal</p>
         )}
@@ -104,6 +123,7 @@ export default function AdminReportDetailPage() {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -126,7 +146,6 @@ export default function AdminReportDetailPage() {
     fetchDetail();
   }, [id]);
 
-  // Group photos by part_type for organized display
   const banPhotos = photos.filter((p) => p.part_type === 'ban');
   const otherPhotos = photos.filter((p) => p.part_type !== 'ban');
 
@@ -269,18 +288,15 @@ export default function AdminReportDetailPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-5 bg-blue-600 rounded-full" />
-                  <h3 className="font-semibold text-slate-900">Foto Pengecekan</h3>
+                  <h3 className="font-semibold text-slate-900">Foto Pengecekan MinIO</h3>
                 </div>
-                <button className="btn-secondary text-xs py-1.5 px-3">
-                  Download Semua
-                </button>
               </div>
 
               {/* Main photos grid */}
               {otherPhotos.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
                   {otherPhotos.map((photo) => (
-                    <PhotoCard key={photo.check_photos_id} photo={photo} />
+                    <PhotoCard key={photo.check_photos_id} photo={photo} onPreview={setSelectedPhoto} />
                   ))}
                 </div>
               )}
@@ -295,7 +311,7 @@ export default function AdminReportDetailPage() {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {banPhotos.map((photo) => (
-                      <PhotoCard key={photo.check_photos_id} photo={photo} />
+                      <PhotoCard key={photo.check_photos_id} photo={photo} onPreview={setSelectedPhoto} />
                     ))}
                   </div>
                 </div>
@@ -310,6 +326,55 @@ export default function AdminReportDetailPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Photo Lightbox Modal */}
+      {selectedPhoto && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setSelectedPhoto(null)}
+        >
+          <div 
+            className="relative max-w-4xl w-full bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-800 flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 text-white">
+              <div>
+                <h4 className="font-bold text-base">
+                  {PART_LABELS[selectedPhoto.part_type] || selectedPhoto.part_type}
+                </h4>
+                <p className="text-xs text-slate-400">{formatDateTime(selectedPhoto.created_at)}</p>
+              </div>
+              <button 
+                onClick={() => setSelectedPhoto(null)}
+                className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Image Area */}
+            <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-black/50 min-h-[300px]">
+              <img 
+                src={selectedPhoto.url} 
+                alt={selectedPhoto.part_type} 
+                className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+              />
+            </div>
+
+            {/* Modal Footer Note */}
+            {selectedPhoto.note && (
+              <div className="p-4 bg-slate-950 border-t border-slate-800 text-red-400 text-sm flex items-start gap-2">
+                <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-xs text-red-500 uppercase tracking-wide">Catatan/Kerusakan:</p>
+                  <p className="text-slate-200">{selectedPhoto.note}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

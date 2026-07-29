@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const userModel = require('../models/user.model');
 const vehicleModel = require('../models/vehicle.model');
 const dailyCheckModel = require('../models/dailyCheck.model');
+const storageService = require('../services/storage.service');
 
 async function resetPassword(req, res) {
   const { id } = req.params;
@@ -61,9 +62,26 @@ async function getReportDetail(req, res) {
 
     const photos = await dailyCheckModel.getPhotosByDailyId(id);
 
+    const photosWithUrls = await Promise.all(
+      photos.map(async (photo) => {
+        let viewUrl = null;
+        try {
+          if (photo.r2_key) {
+            viewUrl = await storageService.generateViewPresignedUrl(photo.r2_key);
+          }
+        } catch {
+          viewUrl = null;
+        }
+        return {
+          ...photo,
+          url: viewUrl,
+        };
+      })
+    );
+
     res.json({
       report,
-      photos,
+      photos: photosWithUrls,
     });
   } catch (err) {
     console.error(err);
@@ -74,16 +92,32 @@ async function getReportDetail(req, res) {
 async function getTodayStatus(req, res) {
   try {
     const allDrivers = await userModel.getActiveDrivers();
-    const checkedIds = await dailyCheckModel.getCheckedTodayUserIds();
+    const checkedUserIds = await dailyCheckModel.getCheckedTodayUserIds();
+    const notCheckedDrivers = allDrivers.filter(
+      driver => !checkedUserIds.includes(driver.users_id)
+    );
 
-    const notCheckedYet = allDrivers.filter(
-      driver => !checkedIds.includes(driver.users_id)
+    const allVehicles = await vehicleModel.getAllVehicles();
+    const activeVehicles = allVehicles.filter(v => v.status === 'active');
+    const checkedVehicleIds = await dailyCheckModel.getCheckedTodayVehicleIds();
+    const notCheckedVehicles = activeVehicles.filter(
+      v => !checkedVehicleIds.includes(v.vehicle_id)
     );
 
     res.json({
       total_driver: allDrivers.length,
-      sudah_checking: checkedIds.length,
-      belum_checking: notCheckedYet,
+      sudah_checking: checkedUserIds.length,
+      belum_checking: notCheckedDrivers,
+      driver_stats: {
+        total: allDrivers.length,
+        sudah_checking: checkedUserIds.length,
+        belum_checking: notCheckedDrivers,
+      },
+      vehicle_stats: {
+        total: activeVehicles.length,
+        sudah_checking: checkedVehicleIds.length,
+        belum_checking: notCheckedVehicles,
+      },
     });
   } catch (err) {
     console.error(err);
@@ -147,6 +181,19 @@ async function updateUser(req, res) {
     const existing = await userModel.findById(id);
     if (!existing) {
       return res.status(404).json({ error: 'User tidak ditemukan' });
+    }
+
+    if (id === req.user.id && status === 'inactive') {
+      return res.status(400).json({ error: 'Anda tidak dapat menonaktifkan akun Anda sendiri' });
+    }
+
+    if (existing.email === 'admin@test.com') {
+      if (status === 'inactive') {
+        return res.status(400).json({ error: 'Akun Super Admin Utama tidak dapat dinonaktifkan' });
+      }
+      if (role && role !== 'admin') {
+        return res.status(400).json({ error: 'Role Super Admin Utama tidak dapat diubah' });
+      }
     }
 
     if (role && !['admin', 'driver'].includes(role)) {

@@ -9,6 +9,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import apiClient from '../../api/client';
+import { useAuth } from '../../context/useAuth';
 import Avatar from '../../components/admin/ui/Avatar';
 import { RoleBadge, StatusBadge } from '../../components/admin/ui/Badge';
 import Toggle from '../../components/admin/ui/Toggle';
@@ -24,6 +25,7 @@ function formatDate(dateStr) {
 }
 
 export default function AdminUsersPage() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -201,57 +203,75 @@ export default function AdminUsersPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((user) => (
-                  <tr key={user.users_id} className="hover:bg-slate-50/50 transition-colors">
-                    {/* User info */}
-                    <td className="td-cell">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={user.name} size="md" />
-                        <div>
-                          <p className="font-medium text-slate-800 text-sm">{user.name}</p>
-                          <p className="text-xs text-slate-400">{user.email}</p>
-                          {user.must_change_password && (
-                            <span className="text-xs text-amber-600 font-medium">
-                              ⚠ Harus ganti password
-                            </span>
-                          )}
+                filtered.map((user) => {
+                  const isSelf = user.users_id === currentUser?.id || user.users_id === currentUser?.users_id;
+                  const isPrimarySuperAdmin = user.email === 'admin@test.com';
+                  const isProtected = isSelf || isPrimarySuperAdmin;
+
+                  return (
+                    <tr key={user.users_id} className="hover:bg-slate-50/50 transition-colors">
+                      {/* User info */}
+                      <td className="td-cell">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={user.name} size="md" />
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium text-slate-800 text-sm">{user.name}</p>
+                              {isSelf && (
+                                <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                                  Anda
+                                </span>
+                              )}
+                              {isPrimarySuperAdmin && !isSelf && (
+                                <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
+                                  Super Admin
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-400">{user.email}</p>
+                            {user.must_change_password && (
+                              <span className="text-xs text-amber-600 font-medium">
+                                ⚠ Harus ganti password
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Role */}
-                    <td className="td-cell">
-                      <RoleBadge role={user.role} isShared={user.is_shared_account} />
-                    </td>
+                      {/* Role */}
+                      <td className="td-cell">
+                        <RoleBadge role={user.role} isShared={user.is_shared_account} />
+                      </td>
 
-                    {/* Created at */}
-                    <td className="td-cell text-slate-500">
-                      {formatDate(user.created_at)}
-                    </td>
+                      {/* Created at */}
+                      <td className="td-cell text-slate-500">
+                        {formatDate(user.created_at)}
+                      </td>
 
-                    {/* Status toggle */}
-                    <td className="td-cell">
-                      <div className="flex items-center gap-2">
-                        <Toggle
-                          checked={user.status === 'active'}
-                          onChange={() => handleToggleStatus(user)}
-                          disabled={togglingId === user.users_id}
-                        />
-                        <StatusBadge status={user.status} />
-                      </div>
-                    </td>
+                      {/* Status toggle */}
+                      <td className="td-cell">
+                        <div className="flex items-center gap-2">
+                          <Toggle
+                            checked={user.status === 'active'}
+                            onChange={() => !isProtected && handleToggleStatus(user)}
+                            disabled={togglingId === user.users_id || isProtected}
+                          />
+                          <StatusBadge status={user.status} />
+                        </div>
+                      </td>
 
-                    {/* Actions */}
-                    <td className="td-cell">
-                      <div className="flex items-center justify-center gap-1.5">
-                        {/* Edit */}
-                        <button
-                          onClick={() => setEditUser(user)}
-                          className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edit user"
-                        >
-                          <Edit2 size={15} />
-                        </button>
+                      {/* Actions */}
+                      <td className="td-cell">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* Edit */}
+                          <button
+                            onClick={() => setEditUser(user)}
+                            disabled={isPrimarySuperAdmin}
+                            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={isPrimarySuperAdmin ? "Super Admin tidak dapat diedit" : "Edit user"}
+                          >
+                            <Edit2 size={15} />
+                          </button>
 
                         {/* Reset password */}
                         <button
@@ -269,7 +289,8 @@ export default function AdminUsersPage() {
                       </div>
                     </td>
                   </tr>
-                ))
+                );
+              })
               )}
             </tbody>
           </table>
