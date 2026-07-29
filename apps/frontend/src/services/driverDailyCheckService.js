@@ -45,3 +45,13 @@ export async function createDailyCheck({
 
   return normalizeDailyCheck(response.data?.daily_check);
 }
+
+export async function getActiveDailyCheck({ vehicleId, signal }) {
+  const response = await apiClient.get('/daily-checks/active', {
+    params: { vehicle_id: vehicleId },
+    signal,
+  });
+
+  const dailyCheck = response.data?.daily_check;
+  return dailyCheck ? normalizeDailyCheck(dailyCheck) : null;
+}

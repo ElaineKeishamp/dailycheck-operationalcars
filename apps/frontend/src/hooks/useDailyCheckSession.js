@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createDailyCheck, MALFORMED_DAILY_CHECK_RESPONSE } from '../services/driverDailyCheckService';
+import {
+  createDailyCheck,
+  getActiveDailyCheck,
+  MALFORMED_DAILY_CHECK_RESPONSE,
+} from '../services/driverDailyCheckService';
 
 const ERROR_MESSAGES = {
   invalid: 'Data checking belum lengkap atau tidak valid.',
@@ -7,6 +11,7 @@ const ERROR_MESSAGES = {
   conflict: 'Kendaraan ini sudah melakukan checking hari ini.',
   generic: 'Gagal memulai sesi checking. Silakan coba lagi.',
   malformed: 'Respons sesi checking tidak valid. Silakan coba lagi.',
+  activeLookup: 'Gagal memeriksa sesi checking sebelumnya.',
 };
 
 function getSafeBackendMessage(error) {
@@ -40,6 +45,7 @@ export function useDailyCheckSession() {
   const [dailyCheck, setDailyCheck] = useState(null);
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState(null);
+  const [message, setMessage] = useState(null);
   const statusRef = useRef('idle');
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef(null);
@@ -74,8 +80,31 @@ export function useDailyCheckSession() {
 
     updateStatus('starting');
     setError(null);
+    setMessage(null);
 
     try {
+      let activeDailyCheck = null;
+
+      try {
+        activeDailyCheck = await getActiveDailyCheck({
+          vehicleId: preparedData.vehicleId,
+          signal: controller.signal,
+        });
+      } catch (lookupError) {
+        if (lookupError.name === 'CanceledError' || lookupError.name === 'AbortError') return null;
+        setError(ERROR_MESSAGES.activeLookup);
+      }
+
+      if (activeDailyCheck) {
+        if (!isMountedRef.current) return null;
+
+        setDailyCheck(activeDailyCheck);
+        updateStatus('active');
+        setError(null);
+        setMessage('Sesi checking sebelumnya dilanjutkan.');
+        return activeDailyCheck;
+      }
+
       const createdDailyCheck = await createDailyCheck({
         ...preparedData,
         signal: controller.signal,
@@ -86,14 +115,35 @@ export function useDailyCheckSession() {
       setDailyCheck(createdDailyCheck);
       updateStatus('active');
       setError(null);
+      setMessage(null);
       return createdDailyCheck;
     } catch (err) {
       if (!isMountedRef.current || err.name === 'CanceledError' || err.name === 'AbortError') return null;
+
+      if (err.response?.status === 409) {
+        try {
+          const activeDailyCheck = await getActiveDailyCheck({
+            vehicleId: preparedData.vehicleId,
+            signal: controller.signal,
+          });
+
+          if (activeDailyCheck) {
+            setDailyCheck(activeDailyCheck);
+            updateStatus('active');
+            setError(null);
+            setMessage('Sesi checking sebelumnya dilanjutkan.');
+            return activeDailyCheck;
+          }
+        } catch (lookupError) {
+          if (lookupError.name === 'CanceledError' || lookupError.name === 'AbortError') return null;
+        }
+      }
 
       const mappedError = mapDailyCheckError(err);
       setDailyCheck(null);
       updateStatus(mappedError.status);
       setError(mappedError.message);
+      setMessage(null);
       return null;
     } finally {
       if (abortControllerRef.current === controller) {
@@ -106,6 +156,7 @@ export function useDailyCheckSession() {
     dailyCheck,
     status,
     error,
+    message,
     startDailyCheck,
     clearError,
   };

@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middlewares/auth');
-const { startDailyCheck, getPhotoUploadUrl, uploadPhoto, submitDailyCheck } = require('../controllers/dailyCheck.controller');
-const { body, param } = require('express-validator');
+const {
+	startDailyCheck,
+	getActiveDailyCheck,
+	getPhotoUploadUrl,
+	uploadPhoto,
+	getDailyCheckPhotos,
+	submitDailyCheck,
+} = require('../controllers/dailyCheck.controller');
+const { body, param, query } = require('express-validator');
 const validate = require('../middlewares/validate');
 
 const VALID_PART_TYPES = [
@@ -21,6 +28,16 @@ router.post(
 	startDailyCheck
 );
 
+router.get(
+	'/active',
+	verifyToken,
+	[
+		query('vehicle_id').notEmpty().withMessage('vehicle_id wajib diisi'),
+		validate,
+	],
+	getActiveDailyCheck
+);
+
 // Minta Presigned Upload URL ke MinIO
 router.post(
 	'/:dailyCheckId/photo-url',
@@ -28,6 +45,8 @@ router.post(
 	[
 		param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'),
 		body('part_type').notEmpty().isIn(VALID_PART_TYPES).withMessage('part_type tidak valid'),
+		body('part_index').optional({ nullable: true }).isInt({ min: 1, max: 4 }).withMessage('part_index harus 1 sampai 4'),
+		body('content_type').optional().isIn(['image/jpeg', 'image/png', 'image/webp']).withMessage('content_type tidak valid'),
 		validate,
 	],
 	getPhotoUploadUrl
@@ -40,11 +59,19 @@ router.post(
 	[
 		param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'),
 		body('part_type').notEmpty().isIn(VALID_PART_TYPES).withMessage('part_type tidak valid'),
-		body('key').optional().isString(),
+		body('part_index').optional({ nullable: true }).isInt({ min: 1, max: 4 }).withMessage('part_index harus 1 sampai 4'),
+		body('key').notEmpty().isString().withMessage('key wajib diisi'),
 		body('note').optional().isString(),
 		validate,
 	],
 	uploadPhoto
+);
+
+router.get(
+	'/:dailyCheckId/photos',
+	verifyToken,
+	[param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'), validate],
+	getDailyCheckPhotos
 );
 
 router.post('/:dailyCheckId/submit', verifyToken, [param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'), validate], submitDailyCheck);

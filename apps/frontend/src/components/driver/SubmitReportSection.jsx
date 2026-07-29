@@ -1,6 +1,10 @@
 import { Send } from 'lucide-react';
 
 function getSubmitHint({ allRequiredCaptured, allRequiredUploaded, isUploadingAny, hasUploadFailures }) {
+  if (allRequiredUploaded) {
+    return 'Semua foto berhasil diupload. Submit laporan akan diaktifkan pada tahap berikutnya.';
+  }
+
   if (!allRequiredCaptured) {
     return 'Selesaikan semua foto wajib untuk melanjutkan.';
   }
@@ -12,8 +16,7 @@ function getSubmitHint({ allRequiredCaptured, allRequiredUploaded, isUploadingAn
   if (isUploadingAny || !allRequiredUploaded) {
     return 'Tunggu hingga seluruh foto selesai diupload.';
   }
-
-  return 'Semua foto berhasil diupload. Submit laporan akan diaktifkan pada tahap berikutnya.';
+  return 'Tunggu hingga seluruh foto selesai diupload.';
 }
 
 export default function SubmitReportSection({

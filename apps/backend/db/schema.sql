@@ -51,10 +51,12 @@ CREATE TABLE public.check_photos (
     check_photos_id uuid DEFAULT gen_random_uuid() NOT NULL,
     daily_id uuid NOT NULL,
     part_type character varying(20) NOT NULL,
+    part_index integer,
     r2_key text NOT NULL,
     thumbnail_key text NOT NULL,
     note text,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT check_photos_part_index_check CHECK (((((part_type)::text = 'ban'::text) AND ((part_index IS NULL) OR ((part_index >= 1) AND (part_index <= 4)))) OR (((part_type)::text <> 'ban'::text) AND (part_index IS NULL)))),
     CONSTRAINT check_photos_part_type_check CHECK (((part_type)::text = ANY ((ARRAY['odo'::character varying, 'body_kiri'::character varying, 'body_kanan'::character varying, 'kap'::character varying, 'depan'::character varying, 'belakang'::character varying, 'interior'::character varying, 'ban'::character varying, 'lainnya'::character varying])::text[])))
 );
 
@@ -203,6 +205,22 @@ CREATE INDEX idx_check_photos_daily ON public.check_photos USING btree (daily_id
 --
 
 CREATE INDEX idx_check_photos_part_type ON public.check_photos USING btree (part_type);
+
+
+--
+-- TOC entry 4943 (class 1259 OID 17569)
+-- Name: unique_check_photos_daily_ban_slot; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX unique_check_photos_daily_ban_slot ON public.check_photos USING btree (daily_id, part_type, part_index) WHERE (((part_type)::text = 'ban'::text) AND (part_index IS NOT NULL));
+
+
+--
+-- TOC entry 4944 (class 1259 OID 17570)
+-- Name: unique_check_photos_daily_non_ban_slot; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX unique_check_photos_daily_non_ban_slot ON public.check_photos USING btree (daily_id, part_type) WHERE ((part_type)::text <> 'ban'::text);
 
 
 --

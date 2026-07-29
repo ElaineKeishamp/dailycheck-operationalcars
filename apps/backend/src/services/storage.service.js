@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, GetObjectCommand, CreateBucketCommand, HeadBucketCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, GetObjectCommand, CreateBucketCommand, HeadBucketCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 const endpoint = process.env.S3_ENDPOINT || 'http://localhost:9000';
@@ -30,6 +30,7 @@ async function ensureBucketExists() {
       console.log(`Bucket "${bucketName}" created successfully!`);
     } else {
       console.error('Error checking bucket:', err.message);
+      throw err;
     }
   }
 }
@@ -67,10 +68,28 @@ async function generateViewPresignedUrl(key, expiresIn = 1800) {
   return await getSignedUrl(s3Client, command, { expiresIn });
 }
 
+async function objectExists(key) {
+  if (!key) return false;
+
+  try {
+    await s3Client.send(new HeadObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    }));
+    return true;
+  } catch (err) {
+    if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
+      return false;
+    }
+    throw err;
+  }
+}
+
 module.exports = {
   s3Client,
   bucketName,
   ensureBucketExists,
   generateUploadPresignedUrl,
   generateViewPresignedUrl,
+  objectExists,
 };

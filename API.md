@@ -150,64 +150,49 @@ Driver mulai sesi checking harian.
 
 ---
 
-## POST /daily-checks/:dailyCheckId/photos
-Upload foto per bagian mobil. Dipanggil berkali-kali (1 kali per foto). Endpoint ini sudah menerima `multipart/form-data`, tetapi penyimpanan foto real belum dapat berjalan sampai konfigurasi storage S3/R2/MinIO ditambahkan.
+## GET /daily-checks/active
+Ambil sesi checking hari ini yang masih bisa dilanjutkan untuk kendaraan tertentu.
 
 **Headers:** `Authorization: Bearer <token>`
 
-**Content-Type:** `multipart/form-data`
+**Query params:**
+- `vehicle_id` - wajib.
 
-**Form fields:**
-- `photo` — file gambar, wajib. Field name harus `photo`.
-- `part_type` — wajib. Nilai yang didukung: `odo`, `body_kiri`, `body_kanan`, `kap`, `depan`, `belakang`, `interior`, `ban`, `lainnya`.
-- `note` — opsional.
-
-**File limit dan tipe:**
-- Maksimal 8 MB.
-- MIME type yang diterima: `image/jpeg`, `image/png`, `image/webp`.
-
-**Validasi akses:**
-- Daily check harus ada.
-- Daily check harus milik user yang sedang login.
-- Status daily check harus `incomplete`.
-
-**Catatan ban:** schema database belum memiliki kolom tire index / `part_index`. Untuk `ban`, upload empat record terpisah dengan `part_type = ban`. Server belum bisa membedakan posisi ban saat restorasi data.
-
-**Response sukses jika storage sudah tersedia (201):**
+**Response jika ada sesi aktif (200):**
 ```json
-{ "photo": { "check_photos_id": "...", "part_type": "odo", "r2_key": "...", "thumbnail_key": "...", ... } }
+{
+  "daily_check": {
+    "daily_id": "uuid",
+    "vehicle_id": "uuid",
+    "status": "incomplete",
+    "vehicle": {
+      "plate_number": "BK 1234 AB",
+      "brand": "Toyota",
+      "model": "Avanza"
+    }
+  }
+}
 ```
 
-**Response saat storage belum dikonfigurasi (503):**
+**Response jika tidak ada sesi aktif (200):**
 ```json
-{ "error": "Penyimpanan foto belum dikonfigurasi" }
+{ "daily_check": null }
 ```
 
-**Response gagal lain:**
-- `400` — file kosong, `part_type` tidak valid, tipe file tidak didukung, atau request tidak valid
-- `403` — daily check bukan milik user yang sedang login
-- `404` — daily check tidak ditemukan
-- `409` — daily check sudah disubmit
-- `413` — file terlalu besar
-- `500` — kegagalan server/storage/database tanpa detail internal
-
----
-
-**Catatan Pengerjaan Backend (2026-07-28)**
-
-- **Validation:** ditambahkan dependency `express-validator` dan middleware `src/middlewares/validate.js`. Routes yang diperbarui: `src/routes/auth.routes.js`, `src/routes/dailyCheck.routes.js`, `src/routes/admin.routes.js`.
-- **Model layer:** sudah ada model terpisah di `src/models/` — `user.model.js`, `vehicle.model.js`, `dailyCheck.model.js`, `checkPhoto.model.js`.
-- **Controllers:** `src/controllers/` sudah memanggil model-layer (e.g., `auth.controller.js`, `admin.controller.js`, `dailyCheck.controller.js`).
-- **Server:** dependensi diinstall (`npm install`) dan server berhasil dijalankan dengan `nodemon`.
-- **Catatan Phase 6:** dummy upload key sudah dihentikan. Upload tidak membuat row `check_photos` sampai storage real berhasil menyimpan objek foto dan thumbnail.
+Endpoint ini hanya mengembalikan sesi milik user yang sedang login dan hanya untuk status `incomplete`.
 
 ---
 
 ## Alur Upload Foto MinIO (Driver)
 
-1. **Minta Presigned Upload URL**: Driver panggil `POST /daily-checks/:dailyCheckId/photo-url` dengan `{ "part_type": "odo" }`. Backend merespon `upload_url` & `key`.
-2. **Upload File ke MinIO**: Driver meng-upload file foto secara langsung ke MinIO menggunakan HTTP `PUT` ke `upload_url` tersebut (`headers: { "Content-Type": "image/webp" }`).
-3. **Simpan Metadata Foto**: Driver panggil `POST /daily-checks/:dailyCheckId/photos` dengan `{ "part_type": "odo", "key": "key_dari_step_1" }` untuk menyimpan data foto ke database.
+Upload foto driver memakai satu flow presigned MinIO:
+
+1. Driver meminta URL upload ke backend.
+2. Driver mengirim Blob/JPEG langsung ke MinIO dengan `PUT`.
+3. Driver mengonfirmasi key ke backend.
+4. Backend memverifikasi object ada di MinIO, lalu menyimpan row `check_photos`.
+
+Frontend tidak mengirim `multipart/form-data` ke backend untuk upload foto.
 
 ---
 
@@ -220,19 +205,30 @@ Minta Presigned Upload URL ke MinIO Object Storage untuk mengunggah foto.
 ```json
 {
   "part_type": "odo",
-  "content_type": "image/webp"
+  "part_index": null,
+  "content_type": "image/jpeg"
 }
 ```
+
+Untuk ban, gunakan `part_type: "ban"` dan `part_index` 1 sampai 4. Untuk part selain `ban`, `part_index` harus `null` atau tidak dikirim.
 
 **Response Sukses (200):**
 ```json
 {
-  "upload_url": "http://localhost:9000/dailycheck-photos/inspections/2026/uuid/odo_12345.webp?X-Amz-Algorithm=...",
-  "key": "inspections/2026/uuid/odo_12345.webp",
+  "upload_url": "http://localhost:9000/dailycheck-photos/inspections/2026/uuid/odo_12345.jpg?X-Amz-Algorithm=...",
+  "key": "inspections/2026/uuid/odo_12345.jpg",
   "part_type": "odo",
+  "part_index": null,
   "expires_in": 300
 }
 ```
+
+**Validasi:**
+- Daily check harus milik user yang sedang login.
+- Status daily check harus `incomplete`.
+- `content_type` harus `image/jpeg`, `image/png`, atau `image/webp`.
+- Backend yang membuat object key; client tidak boleh mengirim key buatan sendiri pada tahap ini.
+- Slot foto yang sudah ada akan ditolak dengan `409`.
 
 ---
 
@@ -245,10 +241,13 @@ Konfirmasi pendaftaran foto setelah berhasil di-upload ke MinIO.
 ```json
 {
   "part_type": "odo",
-  "key": "inspections/2026/uuid/odo_12345.webp",
+  "part_index": null,
+  "key": "inspections/2026/uuid/odo_12345.jpg",
   "note": "Kondisi baik, lecet halus"
 }
 ```
+
+Backend memverifikasi key berada di namespace daily check yang benar dan object sudah ada di MinIO sebelum membuat row database.
 
 **Response Sukses (201):**
 ```json
@@ -257,16 +256,64 @@ Konfirmasi pendaftaran foto setelah berhasil di-upload ke MinIO.
     "check_photos_id": "uuid",
     "daily_id": "uuid",
     "part_type": "odo",
-    "r2_key": "inspections/2026/uuid/odo_12345.webp",
-    "thumbnail_key": "thumb_inspections/2026/uuid/odo_12345.webp",
+    "part_index": null,
+    "r2_key": "inspections/2026/uuid/odo_12345.jpg",
+    "thumbnail_key": "thumb_inspections/2026/uuid/odo_12345.jpg",
     "note": "Kondisi baik, lecet halus",
-    "url": "http://localhost:9000/dailycheck-photos/inspections/2026/uuid/odo_12345.webp?X-Amz-..."
+    "url": "http://localhost:9000/dailycheck-photos/inspections/2026/uuid/odo_12345.jpg?X-Amz-..."
   }
 }
 ```
 
+**Rules `part_index`:**
+- `ban` wajib memakai integer `1`, `2`, `3`, atau `4`.
+- Part selain `ban` harus `null` atau tidak mengirim `part_index`.
+- Legacy row ban lama dengan `part_index = null` dianggap ambigu.
+
+**Duplicate slot:**
+- Satu daily check hanya boleh punya satu row per logical slot.
+- Contoh: satu `odo`, satu `kap`, satu `ban` dengan `part_index=1`.
+- `lainnya` saat ini juga satu slot per daily check sesuai UI driver.
+
+**Response gagal:**
+- `400` - part/key/content tidak valid
+- `404` - daily check tidak ditemukan atau object belum ada di MinIO
+- `409` - daily check sudah submitted atau slot foto sudah ada
+- `500` - kegagalan server/storage/database
+
 ---
 
+## GET /daily-checks/:dailyCheckId/photos
+Ambil daftar foto yang sudah terkonfirmasi untuk sesi driver.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response Sukses (200):**
+```json
+{
+  "photos": [
+    {
+      "check_photos_id": "uuid",
+      "daily_id": "uuid",
+      "part_type": "ban",
+      "part_index": 1,
+      "r2_key": "inspections/2026/uuid/ban_1_12345.jpg",
+      "thumbnail_key": "thumb_inspections/2026/uuid/ban_1_12345.jpg",
+      "note": null,
+      "created_at": "2026-07-29T..."
+    }
+  ]
+}
+```
+
+Jika belum ada foto:
+```json
+{ "photos": [] }
+```
+
+Endpoint ini hanya mengembalikan foto untuk daily check milik user yang sedang login.
+
+---
 ## POST /daily-checks/:dailyCheckId/submit
 Submit laporan setelah semua foto wajib terupload.
 
