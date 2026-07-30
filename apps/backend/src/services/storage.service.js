@@ -6,6 +6,7 @@ const {
   CreateBucketCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
 } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 require('dotenv').config();
@@ -102,6 +103,31 @@ async function objectExists(key) {
   }
 }
 
+async function getObjectMetadata(key) {
+  if (!isSafeObjectKey(key)) {
+    throw new Error('Object key tidak valid');
+  }
+
+  try {
+    const result = await s3Client.send(new HeadObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    }));
+
+    return {
+      exists: true,
+      contentType: result.ContentType || null,
+      contentLength: result.ContentLength ?? null,
+      lastModified: result.LastModified || null,
+    };
+  } catch (err) {
+    if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
+      return { exists: false };
+    }
+    throw err;
+  }
+}
+
 function isSafeObjectKey(key) {
   return typeof key === 'string'
     && key.length > 0
@@ -110,6 +136,22 @@ function isSafeObjectKey(key) {
     && !key.startsWith('/')
     && !key.includes('..')
     && !/[\\\0\r\n]/.test(key);
+}
+
+function isSafeObjectPrefix(prefix) {
+  if (typeof prefix !== 'string') return false;
+  if (prefix.length === 0 || prefix.length > 1024) return false;
+  if (!prefix.startsWith('inspections/')) return false;
+  if (prefix.startsWith('/')) return false;
+  if (prefix.includes('..')) return false;
+  if (/[\\\0\r\n]/.test(prefix)) return false;
+
+  const segments = prefix.split('/');
+  const hasEmptyInternalSegment = segments
+    .slice(0, prefix.endsWith('/') ? -1 : undefined)
+    .some((segment) => segment.length === 0);
+
+  return !hasEmptyInternalSegment;
 }
 
 async function deleteObject(key) {
@@ -125,6 +167,37 @@ async function deleteObject(key) {
   return true;
 }
 
+async function listInspectionObjects({ olderThanDate, prefix = 'inspections/' } = {}) {
+  if (!isSafeObjectPrefix(prefix)) {
+    throw new Error('Object prefix tidak valid');
+  }
+
+  const objects = [];
+  let continuationToken;
+
+  do {
+    const result = await s3Client.send(new ListObjectsV2Command({
+      Bucket: bucketName,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    }));
+
+    (result.Contents || []).forEach((object) => {
+      if (!isSafeObjectKey(object.Key)) return;
+      if (olderThanDate && object.LastModified && object.LastModified >= olderThanDate) return;
+      objects.push({
+        key: object.Key,
+        lastModified: object.LastModified || null,
+        size: object.Size ?? null,
+      });
+    });
+
+    continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return objects;
+}
+
 module.exports = {
   s3Client,
   bucketName,
@@ -132,5 +205,9 @@ module.exports = {
   generateUploadPresignedUrl,
   generateViewPresignedUrl,
   objectExists,
+  getObjectMetadata,
+  isSafeObjectKey,
+  isSafeObjectPrefix,
   deleteObject,
+  listInspectionObjects,
 };

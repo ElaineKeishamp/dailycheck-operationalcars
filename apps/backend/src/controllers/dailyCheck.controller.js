@@ -2,9 +2,12 @@ const userModel = require('../models/user.model');
 const vehicleModel = require('../models/vehicle.model');
 const dailyCheckModel = require('../models/dailyCheck.model');
 const storageService = require('../services/storage.service');
+const jwt = require('jsonwebtoken');
 
 const VALID_PART_TYPES = ['odo', 'body_kiri', 'body_kanan', 'kap', 'depan', 'belakang', 'interior', 'ban', 'lainnya'];
 const VALID_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const UPLOAD_TICKET_PURPOSE = 'photo-upload';
+const UPLOAD_TICKET_EXPIRES_IN_SECONDS = 10 * 60;
 const REQUIRED_PHOTO_SLOTS = [
   { part_type: 'odo', part_index: null, checklist_id: 'odo' },
   { part_type: 'body_kiri', part_index: null, checklist_id: 'body_kiri' },
@@ -67,6 +70,60 @@ function getExtensionForContentType(contentType) {
   if (contentType === 'image/png') return 'png';
   if (contentType === 'image/webp') return 'webp';
   return 'jpg';
+}
+
+function createUploadTicket({ userId, dailyCheckId, partType, partIndex, key, contentType }) {
+  return jwt.sign(
+    {
+      purpose: UPLOAD_TICKET_PURPOSE,
+      users_id: userId,
+      daily_id: dailyCheckId,
+      part_type: partType,
+      part_index: partIndex,
+      key,
+      content_type: contentType,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: UPLOAD_TICKET_EXPIRES_IN_SECONDS }
+  );
+}
+
+function verifyUploadTicket(uploadTicket) {
+  if (!uploadTicket || typeof uploadTicket !== 'string') {
+    const error = new Error('upload_ticket wajib diisi');
+    error.code = 'UPLOAD_TICKET_REQUIRED';
+    throw error;
+  }
+
+  try {
+    const payload = jwt.verify(uploadTicket, process.env.JWT_SECRET);
+    if (payload?.purpose !== UPLOAD_TICKET_PURPOSE) {
+      const error = new Error('upload_ticket tidak valid');
+      error.code = 'UPLOAD_TICKET_INVALID';
+      throw error;
+    }
+    return payload;
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      error.code = 'UPLOAD_TICKET_EXPIRED';
+    } else if (!error.code) {
+      error.code = 'UPLOAD_TICKET_INVALID';
+    }
+    throw error;
+  }
+}
+
+function getUploadTicketErrorResponse(error) {
+  if (error.code === 'UPLOAD_TICKET_REQUIRED') {
+    return { status: 400, body: { error: 'upload_ticket wajib diisi' } };
+  }
+  if (error.code === 'UPLOAD_TICKET_EXPIRED') {
+    return { status: 400, body: { error: 'Tiket upload sudah kedaluwarsa. Ambil ulang foto.' } };
+  }
+  if (error.code === 'UPLOAD_TICKET_INVALID') {
+    return { status: 400, body: { error: 'Tiket upload tidak valid.' } };
+  }
+  return null;
 }
 
 function serializeDailyCheck(dailyCheck) {
@@ -204,13 +261,25 @@ async function getPhotoUploadUrl(req, res) {
     const key = `${getPhotoKeyPrefix(dailyCheckId)}${getLogicalSlot(part_type, slotValidation.partIndex)}_${uniqueValue}.${extension}`;
 
     const { uploadUrl, expiresIn } = await storageService.generateUploadPresignedUrl(key, mimeType, 300);
+    const uploadTicket = createUploadTicket({
+      userId: req.user.id,
+      dailyCheckId,
+      partType: part_type,
+      partIndex: slotValidation.partIndex,
+      key,
+      contentType: mimeType,
+    });
+    const ticketPayload = jwt.decode(uploadTicket);
 
     res.json({
       upload_url: uploadUrl,
       key,
+      object_key: key,
+      upload_ticket: uploadTicket,
       part_type,
       part_index: slotValidation.partIndex,
       expires_in: expiresIn,
+      expires_at: ticketPayload?.exp ? new Date(ticketPayload.exp * 1000).toISOString() : null,
     });
   } catch (err) {
     console.error(err);
@@ -223,15 +292,29 @@ async function getPhotoUploadUrl(req, res) {
  */
 async function uploadPhoto(req, res) {
   const { dailyCheckId } = req.params;
-  const { part_type, part_index, key, note } = req.body;
+  const { upload_ticket, note } = req.body;
+
+  let ticket;
+  try {
+    ticket = verifyUploadTicket(upload_ticket);
+  } catch (error) {
+    const response = getUploadTicketErrorResponse(error);
+    if (response) return res.status(response.status).json(response.body);
+    throw error;
+  }
+
+  if (ticket.users_id !== req.user.id || ticket.daily_id !== dailyCheckId) {
+    return res.status(400).json({ error: 'Tiket upload tidak sesuai dengan sesi checking.' });
+  }
+
+  const part_type = ticket.part_type;
+  const part_index = ticket.part_index ?? null;
+  const key = ticket.key;
+  const contentType = ticket.content_type || 'image/jpeg';
 
   const slotValidation = validatePhotoSlot(part_type, part_index);
   if (slotValidation.error) {
     return res.status(400).json({ error: slotValidation.error });
-  }
-
-  if (!key || typeof key !== 'string') {
-    return res.status(400).json({ error: 'key wajib diisi' });
   }
 
   if (!isSafePhotoKey({
@@ -244,46 +327,125 @@ async function uploadPhoto(req, res) {
   }
 
   try {
-    const dailyCheck = await dailyCheckModel.findByIdAndUser(dailyCheckId, req.user.id);
-    if (!dailyCheck) {
-      return res.status(404).json({ error: 'Daily check tidak ditemukan' });
-    }
-
-    if (dailyCheck.status !== 'incomplete') {
-      return res.status(409).json({ error: 'Daily check sudah disubmit' });
-    }
-
-    const existingPhoto = await dailyCheckModel.findPhotoByLogicalSlot({
+    const result = await dailyCheckModel.confirmPhotoWithDailyCheckLock({
       daily_id: dailyCheckId,
-      part_type,
-      part_index: slotValidation.partIndex,
-    });
-    if (existingPhoto) {
-      return res.status(409).json({ error: 'Foto bagian ini sudah diupload' });
-    }
-
-    const exists = await storageService.objectExists(key);
-    if (!exists) {
-      return res.status(404).json({ error: 'File foto belum ditemukan di storage' });
-    }
-
-    const thumbnailKey = `thumb_${key}`;
-
-    const photo = await dailyCheckModel.addPhoto({
-      daily_id: dailyCheckId,
+      users_id: req.user.id,
       part_type,
       part_index: slotValidation.partIndex,
       r2_key: key,
-      thumbnail_key: thumbnailKey,
       note,
+      verifyStorageObject: async () => {
+        const metadata = await storageService.getObjectMetadata(key);
+        if (!metadata.exists) {
+          const error = new Error('File foto belum ditemukan di storage');
+          error.code = 'PHOTO_OBJECT_NOT_FOUND';
+          throw error;
+        }
+        if (metadata.contentType && metadata.contentType !== contentType) {
+          const error = new Error('content_type object tidak sesuai');
+          error.code = 'PHOTO_OBJECT_METADATA_INVALID';
+          throw error;
+        }
+        if (metadata.contentLength !== null && metadata.contentLength <= 0) {
+          const error = new Error('File foto kosong');
+          error.code = 'PHOTO_OBJECT_METADATA_INVALID';
+          throw error;
+        }
+      },
     });
 
-    const viewUrl = await storageService.generateViewPresignedUrl(key);
+    if (result.status === 'daily_check_not_found') {
+      return res.status(404).json({ error: 'Daily check tidak ditemukan' });
+    }
 
-    res.status(201).json({
+    if (result.status === 'daily_check_submitted') {
+      return res.status(409).json({ error: 'Daily check sudah disubmit' });
+    }
+
+    if (result.status === 'slot_conflict') {
+      return res.status(409).json({ error: 'Foto bagian ini sudah dikonfirmasi dengan object lain' });
+    }
+
+    const viewUrl = await storageService.generateViewPresignedUrl(result.photo.r2_key);
+
+    res.status(result.status === 'already_confirmed' ? 200 : 201).json({
       photo: {
-        ...photo,
+        ...result.photo,
         url: viewUrl,
+      },
+      already_confirmed: result.status === 'already_confirmed',
+    });
+  } catch (err) {
+    if (err.code === 'PHOTO_OBJECT_NOT_FOUND') {
+      return res.status(404).json({ error: 'File foto belum ditemukan di storage' });
+    }
+    if (err.code === 'PHOTO_OBJECT_METADATA_INVALID') {
+      return res.status(400).json({ error: 'Data object foto tidak valid' });
+    }
+    console.error(err);
+    res.status(500).json({ error: 'Terjadi kesalahan server' });
+  }
+}
+
+async function cancelPhotoUpload(req, res) {
+  const { dailyCheckId } = req.params;
+  const { upload_ticket } = req.body;
+
+  if (req.user.role !== 'driver') {
+    return res.status(403).json({ error: 'Hanya driver yang dapat membatalkan upload foto' });
+  }
+
+  let ticket;
+  try {
+    ticket = verifyUploadTicket(upload_ticket);
+  } catch (error) {
+    const response = getUploadTicketErrorResponse(error);
+    if (response) return res.status(response.status).json(response.body);
+    throw error;
+  }
+
+  if (ticket.users_id !== req.user.id || ticket.daily_id !== dailyCheckId) {
+    return res.status(400).json({ error: 'Tiket upload tidak sesuai dengan sesi checking.' });
+  }
+
+  const slotValidation = validatePhotoSlot(ticket.part_type, ticket.part_index ?? null);
+  if (slotValidation.error) {
+    return res.status(400).json({ error: slotValidation.error });
+  }
+
+  if (!isSafePhotoKey({
+    key: ticket.key,
+    dailyCheckId,
+    partType: ticket.part_type,
+    partIndex: slotValidation.partIndex,
+  })) {
+    return res.status(400).json({ error: 'key foto tidak valid' });
+  }
+
+  try {
+    const result = await dailyCheckModel.cancelUnconfirmedUploadWithDailyCheckLock({
+      daily_id: dailyCheckId,
+      users_id: req.user.id,
+      r2_key: ticket.key,
+      deleteStorageObject: async () => {
+        await storageService.deleteObject(ticket.key);
+      },
+    });
+
+    if (result.status === 'daily_check_not_found') {
+      return res.status(404).json({ error: 'Daily check tidak ditemukan' });
+    }
+
+    if (result.status === 'already_confirmed') {
+      return res.status(409).json({ error: 'Foto sudah tercatat di laporan dan tidak dapat dibatalkan sebagai upload tertunda.' });
+    }
+
+    res.json({
+      message: 'Upload tertunda berhasil dibatalkan.',
+      data: {
+        daily_id: dailyCheckId,
+        part_type: ticket.part_type,
+        part_index: slotValidation.partIndex,
       },
     });
   } catch (err) {
@@ -432,6 +594,7 @@ module.exports = {
   getMyHistory,
   getPhotoUploadUrl,
   uploadPhoto,
+  cancelPhotoUpload,
   getDailyCheckPhotos,
   deleteDailyCheckPhoto,
   submitDailyCheck,

@@ -80,6 +80,8 @@ export default function DriverDashboardPage() {
     uploadStates,
     uploadPhoto,
     retryUpload,
+    retryPhotoConfirmation,
+    cancelPendingUpload,
     deleteUploadedPhoto,
     isUploadingAny,
     isDeletingAny,
@@ -189,6 +191,7 @@ export default function DriverDashboardPage() {
     && Number.isFinite(coordinates.latitude)
     && Number.isFinite(coordinates.longitude);
   const checklistDisabled = !canOpenCamera;
+  const recoveryDisabled = !isSessionActive || !isOnline || isSubmitting || isSessionCompleted;
   const deletePhotoDisabled = !isSessionActive || isSubmitting || isSessionCompleted;
   const canSubmitReport = isSessionActive
     && isOnline
@@ -319,6 +322,48 @@ export default function DriverDashboardPage() {
       dailyCheckId: dailyCheck?.daily_id,
       draft,
     });
+  };
+
+  const handleRetryPhotoConfirmation = async (checklistId) => {
+    if (!dailyCheck?.daily_id) {
+      setCameraPreparationError('Sesi checking belum tersedia. Foto belum dapat dikonfirmasi.');
+      return;
+    }
+
+    const result = await retryPhotoConfirmation({
+      dailyCheckId: dailyCheck.daily_id,
+      checklistId,
+      isOnline,
+      isSubmitting,
+    });
+
+    if (!result.ok) {
+      setCameraPreparationError(result.errorMessage || 'Gagal mengonfirmasi foto. Silakan coba lagi.');
+    } else {
+      setCameraPreparationError(null);
+    }
+  };
+
+  const handleCancelPendingUpload = async (checklistId) => {
+    if (!dailyCheck?.daily_id) {
+      setCameraPreparationError('Sesi checking belum tersedia. Upload belum dapat dibatalkan.');
+      return;
+    }
+
+    const result = await cancelPendingUpload({
+      dailyCheckId: dailyCheck.daily_id,
+      checklistId,
+      hasLocalDraft: Boolean(photoDrafts[checklistId]),
+      isOnline,
+      isSubmitting,
+    });
+
+    if (!result.ok) {
+      setCameraPreparationError(result.errorMessage || 'Gagal membatalkan upload tertunda.');
+      return;
+    }
+
+    setCameraPreparationError(null);
   };
 
   const handleCloseDeleteConfirmation = () => {
@@ -492,6 +537,7 @@ export default function DriverDashboardPage() {
                     item={item}
                     isCaptured={Boolean(photoDrafts[item.id])}
                     disabled={checklistDisabled}
+                    recoveryDisabled={recoveryDisabled}
                     deleteDisabled={deletePhotoDisabled}
                     uploadState={uploadStates[item.id]}
                     onOpenCamera={() => handleOpenCamera({
@@ -502,6 +548,8 @@ export default function DriverDashboardPage() {
                       isOptional: false,
                     })}
                     onRetryUpload={() => handleRetryUpload(photoDrafts[item.id])}
+                    onRetryConfirmation={() => handleRetryPhotoConfirmation(item.id)}
+                    onCancelPendingUpload={() => handleCancelPendingUpload(item.id)}
                     onDeletePhoto={() => handleOpenDeleteConfirmation({
                       checklistId: item.id,
                       partType: item.id,
@@ -516,16 +564,20 @@ export default function DriverDashboardPage() {
               <TireChecklistGrid
                 photoDrafts={photoDrafts}
                 disabled={checklistDisabled}
+                recoveryDisabled={recoveryDisabled}
                 deleteDisabled={deletePhotoDisabled}
                 uploadStates={uploadStates}
                 onOpenCamera={handleOpenCamera}
                 onRetryUpload={handleRetryUpload}
+                onRetryConfirmation={handleRetryPhotoConfirmation}
+                onCancelPendingUpload={handleCancelPendingUpload}
                 onDeletePhoto={handleOpenDeleteConfirmation}
               />
 
               <OptionalPhotoCard
                 isCaptured={Boolean(photoDrafts.lainnya)}
                 disabled={checklistDisabled}
+                recoveryDisabled={recoveryDisabled}
                 deleteDisabled={deletePhotoDisabled}
                 uploadState={uploadStates.lainnya}
                 onOpenCamera={() => handleOpenCamera({
@@ -536,6 +588,8 @@ export default function DriverDashboardPage() {
                   isOptional: true,
                 })}
                 onRetryUpload={() => handleRetryUpload(photoDrafts.lainnya)}
+                onRetryConfirmation={() => handleRetryPhotoConfirmation('lainnya')}
+                onCancelPendingUpload={() => handleCancelPendingUpload('lainnya')}
                 onDeletePhoto={() => handleOpenDeleteConfirmation({
                   checklistId: 'lainnya',
                   partType: 'lainnya',

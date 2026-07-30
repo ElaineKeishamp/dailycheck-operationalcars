@@ -146,6 +146,14 @@ async function findPhotoByIdAndDailyId({ check_photos_id, daily_id }) {
   return result.rows[0] || null;
 }
 
+async function findPhotoByObjectKey({ daily_id, r2_key }) {
+  const result = await pool.query(
+    'SELECT * FROM check_photos WHERE daily_id = $1 AND r2_key = $2',
+    [daily_id, r2_key]
+  );
+  return result.rows[0] || null;
+}
+
 async function addPhoto({ daily_id, part_type, part_index, r2_key, thumbnail_key, note }) {
   const result = await pool.query(
     `INSERT INTO check_photos (daily_id, part_type, part_index, r2_key, thumbnail_key, note)
@@ -153,6 +161,137 @@ async function addPhoto({ daily_id, part_type, part_index, r2_key, thumbnail_key
     [daily_id, part_type, part_index || null, r2_key, thumbnail_key, note || null]
   );
   return result.rows[0];
+}
+
+async function confirmPhotoWithDailyCheckLock({
+  daily_id,
+  users_id,
+  part_type,
+  part_index,
+  r2_key,
+  note,
+  verifyStorageObject,
+}) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const dailyResult = await client.query(
+      'SELECT * FROM daily_checks WHERE daily_id = $1 AND users_id = $2 FOR UPDATE',
+      [daily_id, users_id]
+    );
+    const dailyCheck = dailyResult.rows[0] || null;
+
+    if (!dailyCheck) {
+      await client.query('ROLLBACK');
+      return { status: 'daily_check_not_found' };
+    }
+
+    if (dailyCheck.status !== 'incomplete') {
+      await client.query('ROLLBACK');
+      return { status: 'daily_check_submitted', dailyCheck };
+    }
+
+    const objectPhotoResult = await client.query(
+      'SELECT * FROM check_photos WHERE daily_id = $1 AND r2_key = $2',
+      [daily_id, r2_key]
+    );
+    const objectPhoto = objectPhotoResult.rows[0] || null;
+    if (objectPhoto) {
+      await client.query('COMMIT');
+      return { status: 'already_confirmed', photo: objectPhoto };
+    }
+
+    const slotQuery = part_index === null || part_index === undefined
+      ? 'SELECT * FROM check_photos WHERE daily_id = $1 AND part_type = $2 AND part_index IS NULL'
+      : 'SELECT * FROM check_photos WHERE daily_id = $1 AND part_type = $2 AND part_index = $3';
+    const slotParams = part_index === null || part_index === undefined
+      ? [daily_id, part_type]
+      : [daily_id, part_type, part_index];
+    const slotResult = await client.query(slotQuery, slotParams);
+    const slotPhoto = slotResult.rows[0] || null;
+
+    if (slotPhoto) {
+      await client.query('ROLLBACK');
+      return { status: 'slot_conflict', photo: slotPhoto };
+    }
+
+    await verifyStorageObject();
+
+    const thumbnailKey = `thumb_${r2_key}`;
+    const insertResult = await client.query(
+      `INSERT INTO check_photos (daily_id, part_type, part_index, r2_key, thumbnail_key, note)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [daily_id, part_type, part_index || null, r2_key, thumbnailKey, note || null]
+    );
+
+    await client.query('COMMIT');
+    return { status: 'confirmed', photo: insertResult.rows[0] };
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('Rollback failed:', rollbackError);
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function cancelUnconfirmedUploadWithDailyCheckLock({
+  daily_id,
+  users_id,
+  r2_key,
+  deleteStorageObject,
+}) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const dailyResult = await client.query(
+      'SELECT * FROM daily_checks WHERE daily_id = $1 AND users_id = $2 FOR UPDATE',
+      [daily_id, users_id]
+    );
+    const dailyCheck = dailyResult.rows[0] || null;
+
+    if (!dailyCheck) {
+      await client.query('ROLLBACK');
+      return { status: 'daily_check_not_found' };
+    }
+
+    const photoResult = await client.query(
+      'SELECT * FROM check_photos WHERE daily_id = $1 AND r2_key = $2',
+      [daily_id, r2_key]
+    );
+
+    if (photoResult.rows[0]) {
+      await client.query('ROLLBACK');
+      return { status: 'already_confirmed', photo: photoResult.rows[0] };
+    }
+
+    await deleteStorageObject();
+    await client.query('COMMIT');
+    return { status: 'canceled' };
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('Rollback failed:', rollbackError);
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function getConfirmedPhotoKeys() {
+  const result = await pool.query(
+    'SELECT r2_key FROM check_photos WHERE r2_key IS NOT NULL'
+  );
+  return result.rows.map((row) => row.r2_key);
 }
 
 async function deletePhotoByIdAndDailyId({ check_photos_id, daily_id }) {
@@ -290,7 +429,11 @@ module.exports = {
   getPhotosByDailyId,
   findPhotoByLogicalSlot,
   findPhotoByIdAndDailyId,
+  findPhotoByObjectKey,
   addPhoto,
+  confirmPhotoWithDailyCheckLock,
+  cancelUnconfirmedUploadWithDailyCheckLock,
+  getConfirmedPhotoKeys,
   deletePhotoByIdAndDailyId,
   deletePhotoWithDailyCheckLock,
   submitDailyCheckWithLock,
