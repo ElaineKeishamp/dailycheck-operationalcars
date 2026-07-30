@@ -107,8 +107,12 @@ services:
       APP_HOST: ${APP_HOST}
       STORAGE_HOST: ${STORAGE_HOST}
       NGINX_ENVSUBST_FILTER: "^(APP_HOST|STORAGE_HOST)$"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /data/dailycheck/certbot:/var/www/certbot:ro
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       backend:
         condition: service_healthy

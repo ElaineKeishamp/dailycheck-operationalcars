@@ -8,11 +8,19 @@ PostgreSQL, the backend, MinIO API, and MinIO Console stay private on the Docker
 
 MinIO storage uses MinIO AIStor Free with the approved pinned image digest `quay.io/minio/aistor/minio@sha256:17527b97a9e92dcc32b641dc161e4beb1eaf9a9198018c1489923c981f4af2ef`. Verified versions: AIStor Server `RELEASE.2026-07-24T16-43-31Z`; AIStor Client `mc` `RELEASE.2026-07-24T01-15-12Z`. Image upgrades require a controlled digest update and validation.
 
+Public staging URLs:
+
+- `https://staging.dailycheckops.dev`
+- `https://storage-staging.dailycheckops.dev`
+
 ## Required Paths
 
 - `/opt/dailycheck-staging/app`
 - `/opt/dailycheck-staging/secrets/staging.env`
 - `/opt/dailycheck-staging/secrets/minio.license`
+- `/etc/letsencrypt/live/dailycheck-staging/fullchain.pem`
+- `/etc/letsencrypt/live/dailycheck-staging/privkey.pem`
+- `/data/dailycheck/certbot`
 - `/data/dailycheck/postgres`
 - `/data/dailycheck/minio`
 - `/data/dailycheck/backups`
@@ -22,7 +30,7 @@ PostgreSQL 18 stores its default `PGDATA` under `/var/lib/postgresql/18/docker`,
 
 ## Network Rules
 
-Only ports `80` and `443` should be public. Restrict SSH to approved `/32` source IPs. Keep ports `3000`, `5432`, `9000`, and `9001` private. The MinIO console is not publicly exposed.
+Only ports `80` and `443` should be public. Port `80` exists for ACME HTTP-01 challenges and redirects all other traffic to HTTPS. Restrict SSH to approved `/32` source IPs. Keep ports `3000`, `5432`, `9000`, and `9001` private. The MinIO console is not publicly exposed.
 
 Real DNS and HTTPS are required before real mobile UAT. Do not use HTTP for final camera, geolocation, install, offline, or PWA UAT.
 
@@ -45,6 +53,13 @@ chmod 600 /opt/dailycheck-staging/secrets/minio.license
 ```
 
 The license is mounted read-only into the MinIO container as `/minio.license`. Never commit, print, or copy the license into the repository.
+
+The existing Let's Encrypt certificate is mounted read-only from `/etc/letsencrypt` into the gateway. The gateway uses:
+
+- Certificate: `/etc/letsencrypt/live/dailycheck-staging/fullchain.pem`
+- Private key: `/etc/letsencrypt/live/dailycheck-staging/privkey.pem`
+
+Never commit, print, or copy the private key. The ACME webroot host path is `/data/dailycheck/certbot` and is mounted read-only into the gateway as `/var/www/certbot`.
 
 ## Compose Commands
 
@@ -87,12 +102,14 @@ Compose starts PostgreSQL and waits for `pg_isready` to report healthy. It start
 
 ## Verification
 
-- Request `http://APP_HOST/api/health` and expect `{"status":"ok","service":"dailycheck-api","database":"ok"}`.
+- Request `https://staging.dailycheckops.dev/api/health` and expect `{"status":"ok","service":"dailycheck-api","database":"ok"}`.
+- Confirm `http://staging.dailycheckops.dev/` and `http://storage-staging.dailycheckops.dev/` redirect to HTTPS while `/.well-known/acme-challenge/` is served from `/var/www/certbot`.
 - Confirm the configured MinIO bucket exists.
 - Confirm bucket CORS allows only the exact `APP_ORIGIN` and the required `PUT`, `GET`, and `HEAD` methods.
 - Confirm ports `3000`, `5432`, `9000`, and `9001` are not published on the host.
 - Confirm MinIO Console is not reachable publicly.
 - Confirm `/opt/dailycheck-staging/secrets/minio.license` exists only on the VM, has owner `root:root`, has mode `600`, and is mounted read-only.
+- Confirm certificates are mounted read-only and the private key never appears in repository files or logs.
 
 ## PostgreSQL Initialization
 
@@ -109,6 +126,12 @@ The staging init SQL contains schema only. It does not create users, vehicles, r
 The backend must use `S3_ACCESS_KEY` and `S3_SECRET_KEY`, not `MINIO_ROOT_USER` or `MINIO_ROOT_PASSWORD`. The root credentials are only for bootstrap administration inside `minio-init`.
 
 Running `minio-init` repeatedly does not recreate an existing application user and does not overwrite an existing application policy. If `S3_SECRET_KEY` changes after the user already exists, perform a controlled credential rotation; `minio-init` will fail safely when `staging.env` credentials do not match the existing MinIO user. If `deploy/staging/minio/app-policy.json.template` changes after the policy already exists, perform a controlled policy update rather than relying on automatic replacement. Do not solve credential or policy mismatches by deleting MinIO data.
+
+The storage hostname is for S3 API traffic only. It is not the MinIO Console and must not proxy or expose console port `9001`.
+
+## Certificate Renewal
+
+The existing certificate was issued before this gateway configuration. After the gateway is running, renewal should move from standalone mode to the webroot method using host path `/data/dailycheck/certbot`, mounted inside Nginx as `/var/www/certbot`. Nginx must be reloaded after a successful renewal so it serves the refreshed certificate.
 
 ## Orphan Cleanup
 
