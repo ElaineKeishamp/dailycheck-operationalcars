@@ -57,6 +57,23 @@ async function findTodayCheckByDriver(userId) {
   return result.rows[0] || null;
 }
 
+async function findActiveByVehicleAndUser(vehicleId, userId) {
+  const result = await pool.query(
+    `SELECT dc.*, v.plate_number, v.brand, v.model
+     FROM daily_checks dc
+     JOIN vehicles v ON dc.vehicle_id = v.vehicle_id
+     WHERE dc.vehicle_id = $1
+       AND dc.users_id = $2
+       AND dc.check_date = CURRENT_DATE
+       AND dc.status = 'incomplete'
+       AND dc.deleted_at IS NULL
+     ORDER BY dc.created_at DESC
+     LIMIT 1`,
+    [vehicleId, userId]
+  );
+  return result.rows[0] || null;
+}
+
 async function getDriverHistoryLast7Days(userId) {
   const result = await pool.query(
     `SELECT dc.daily_id, dc.check_date, dc.status, dc.created_at,
@@ -93,7 +110,7 @@ async function updateStatus(dailyId, status) {
 async function getCheckedTodayUserIds() {
   const result = await pool.query(
     `SELECT DISTINCT users_id FROM daily_checks 
-     WHERE check_date = CURRENT_DATE AND deleted_at IS NULL`
+     WHERE check_date = CURRENT_DATE AND status = 'submitted' AND deleted_at IS NULL`
   );
   return result.rows.map(r => r.users_id);
 }
@@ -101,7 +118,7 @@ async function getCheckedTodayUserIds() {
 async function getCheckedTodayVehicleIds() {
   const result = await pool.query(
     `SELECT DISTINCT vehicle_id FROM daily_checks 
-     WHERE check_date = CURRENT_DATE AND deleted_at IS NULL`
+     WHERE check_date = CURRENT_DATE AND status = 'submitted' AND deleted_at IS NULL`
   );
   return result.rows.map(r => r.vehicle_id);
 }
@@ -437,6 +454,7 @@ module.exports = {
   findByIdAndUser,
   findById,
   findTodayCheckByDriver,
+  findActiveByVehicleAndUser,
   getDriverHistoryLast7Days,
   createDailyCheck,
   updateStatus,
