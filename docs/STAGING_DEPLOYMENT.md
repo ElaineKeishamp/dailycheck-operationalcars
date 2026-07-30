@@ -8,6 +8,8 @@ PostgreSQL, the backend, MinIO API, and MinIO Console stay private on the Docker
 
 MinIO storage uses MinIO AIStor Free with the approved pinned image digest `quay.io/minio/aistor/minio@sha256:17527b97a9e92dcc32b641dc161e4beb1eaf9a9198018c1489923c981f4af2ef`. Verified versions: AIStor Server `RELEASE.2026-07-24T16-43-31Z`; AIStor Client `mc` `RELEASE.2026-07-24T01-15-12Z`. Image upgrades require a controlled digest update and validation.
 
+The pinned AIStor image is intentionally minimal. The `minio-init` script must not depend on `grep`, `sed`, `awk`, `envsubst`, or package installation. Template interpolation for the bucket policy and CORS XML uses POSIX shell built-ins with the mounted template files as the source of truth.
+
 Public staging URLs:
 
 - `https://staging.dailycheckops.dev`
@@ -125,7 +127,7 @@ The staging init SQL contains schema only. It does not create users, vehicles, r
 
 The backend must use `S3_ACCESS_KEY` and `S3_SECRET_KEY`, not `MINIO_ROOT_USER` or `MINIO_ROOT_PASSWORD`. The root credentials are only for bootstrap administration inside `minio-init`.
 
-Running `minio-init` repeatedly does not recreate an existing application user and does not overwrite an existing application policy. If `S3_SECRET_KEY` changes after the user already exists, perform a controlled credential rotation; `minio-init` will fail safely when `staging.env` credentials do not match the existing MinIO user. If `deploy/staging/minio/app-policy.json.template` changes after the policy already exists, perform a controlled policy update rather than relying on automatic replacement. Do not solve credential or policy mismatches by deleting MinIO data.
+Running `minio-init` repeatedly does not recreate an existing application user and does not overwrite an existing application policy. Unexpected user or policy inspection errors stop initialization safely instead of triggering blind creation. If `S3_SECRET_KEY` changes after the user already exists, perform a controlled credential rotation; `minio-init` will fail safely when `staging.env` credentials do not match the existing MinIO user. If `deploy/staging/minio/app-policy.json.template` changes after the policy already exists, perform a controlled policy update rather than relying on automatic replacement. Do not solve credential or policy mismatches by deleting MinIO data.
 
 The storage hostname is for S3 API traffic only. It is not the MinIO Console and must not proxy or expose console port `9001`.
 

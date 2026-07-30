@@ -18,6 +18,48 @@ POLICY_INFO_ERROR=/tmp/dailycheck-policy-info.err
 MAX_ATTEMPTS=60
 attempt=1
 
+is_missing_resource_error() {
+  error_text=$(cat "$1")
+
+  case "${error_text}" in
+    *[Nn]ot\ [Ff]ound*|*[Nn]ot\ [Ee]xist*|*[Dd]oes\ [Nn]ot\ [Ee]xist*|*[Nn]o\ [Ss]uch*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+render_template() {
+  template_file=$1
+  output_file=$2
+  token=$3
+  value=$4
+  token_found=0
+
+  : > "${output_file}"
+
+  while IFS= read -r line || [ -n "${line}" ]; do
+    case "${line}" in
+      *"${token}"*)
+        prefix=${line%%"${token}"*}
+        suffix=${line#*"${token}"}
+        printf '%s%s%s\n' "${prefix}" "${value}" "${suffix}" >> "${output_file}"
+        token_found=1
+        ;;
+      *)
+        printf '%s\n' "${line}" >> "${output_file}"
+        ;;
+    esac
+  done < "${template_file}"
+
+  if [ "${token_found}" -ne 1 ]; then
+    echo "Template token was not found while rendering ${output_file}." >&2
+    exit 1
+  fi
+}
+
 echo "Waiting for MinIO API..."
 until mc alias set "${ALIAS}" http://minio:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}" >/dev/null 2>&1; do
   if [ "${attempt}" -ge "${MAX_ATTEMPTS}" ]; then
@@ -32,7 +74,7 @@ mc mb --ignore-existing "${ALIAS}/${S3_BUCKET_NAME}" >/dev/null
 
 if mc admin user info "${ALIAS}" "${S3_ACCESS_KEY}" >/dev/null 2>"${USER_INFO_ERROR}"; then
   echo "Application user already exists; keeping existing credentials."
-elif grep -qi "not found\|not exist\|does not exist" "${USER_INFO_ERROR}"; then
+elif is_missing_resource_error "${USER_INFO_ERROR}"; then
   mc admin user add "${ALIAS}" "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}" >/dev/null
   echo "Application user created."
 else
@@ -40,11 +82,11 @@ else
   exit 1
 fi
 
-sed "s#__S3_BUCKET_NAME__#${S3_BUCKET_NAME}#g" /app-policy.json.template > "${POLICY_FILE}"
+render_template /app-policy.json.template "${POLICY_FILE}" "__S3_BUCKET_NAME__" "${S3_BUCKET_NAME}"
 
 if mc admin policy info "${ALIAS}" "${POLICY_NAME}" >/dev/null 2>"${POLICY_INFO_ERROR}"; then
   echo "Application policy already exists; keeping existing policy."
-elif grep -qi "not found\|not exist\|does not exist" "${POLICY_INFO_ERROR}"; then
+elif is_missing_resource_error "${POLICY_INFO_ERROR}"; then
   mc admin policy create "${ALIAS}" "${POLICY_NAME}" "${POLICY_FILE}" >/dev/null
   echo "Application policy created."
 else
@@ -64,7 +106,7 @@ if ! mc ls "${APP_ALIAS}/${S3_BUCKET_NAME}" >/dev/null 2>&1; then
   exit 1
 fi
 
-sed "s#__APP_ORIGIN__#${APP_ORIGIN}#g" /cors.xml.template > "${CORS_FILE}"
+render_template /cors.xml.template "${CORS_FILE}" "__APP_ORIGIN__" "${APP_ORIGIN}"
 mc cors set "${ALIAS}/${S3_BUCKET_NAME}" "${CORS_FILE}" >/dev/null
 
 echo "MinIO bucket and CORS initialization complete."
