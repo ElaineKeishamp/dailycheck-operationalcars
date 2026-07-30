@@ -1,0 +1,16 @@
+*
+!apps/
+!apps/frontend/
+!apps/frontend/**
+!deploy/
+!deploy/staging/
+!deploy/staging/nginx/
+!deploy/staging/nginx/default.conf.template
+
+apps/frontend/node_modules
+apps/frontend/dist
+apps/frontend/dist-isolation
+apps/frontend/.env
+apps/frontend/.env.*
+apps/frontend/logs
+apps/frontend/npm-debug.log*

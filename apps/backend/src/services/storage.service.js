@@ -19,21 +19,41 @@ function requireEnv(name) {
   return value;
 }
 
-const endpoint = requireEnv('S3_ENDPOINT');
+function requireEndpoint(preferredName, fallbackName) {
+  const value = process.env[preferredName] || process.env[fallbackName];
+  if (!value) {
+    throw new Error(`${preferredName} or ${fallbackName} environment variable is required`);
+  }
+  return value;
+}
+
+const internalEndpoint = requireEndpoint('S3_INTERNAL_ENDPOINT', 'S3_ENDPOINT');
+const publicEndpoint = requireEndpoint('S3_PUBLIC_ENDPOINT', 'S3_ENDPOINT');
 const region = requireEnv('S3_REGION');
 const accessKeyId = requireEnv('S3_ACCESS_KEY');
 const secretAccessKey = requireEnv('S3_SECRET_KEY');
 const bucketName = requireEnv('S3_BUCKET_NAME');
 
-const s3Client = new S3Client({
-  endpoint,
+const clientConfig = {
   region,
   credentials: {
     accessKeyId,
     secretAccessKey,
   },
-  forcePathStyle: true, // Mandatory for MinIO / S3-compatible path-style URLs
+  forcePathStyle: true,
+};
+
+const internalS3Client = new S3Client({
+  ...clientConfig,
+  endpoint: internalEndpoint,
 });
+
+const signingS3Client = new S3Client({
+  ...clientConfig,
+  endpoint: publicEndpoint,
+});
+
+const s3Client = internalS3Client;
 
 /**
  * Ensure bucket exists in MinIO (auto-create if missing)
@@ -67,7 +87,7 @@ async function generateUploadPresignedUrl(key, contentType = 'image/webp', expir
     ContentType: contentType,
   });
 
-  const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn });
+  const uploadUrl = await getSignedUrl(signingS3Client, command, { expiresIn });
   return { uploadUrl, key, expiresIn };
 }
 
@@ -83,7 +103,7 @@ async function generateViewPresignedUrl(key, expiresIn = 1800) {
     Key: key,
   });
 
-  return await getSignedUrl(s3Client, command, { expiresIn });
+  return await getSignedUrl(signingS3Client, command, { expiresIn });
 }
 
 async function objectExists(key) {
@@ -200,6 +220,8 @@ async function listInspectionObjects({ olderThanDate, prefix = 'inspections/' } 
 
 module.exports = {
   s3Client,
+  internalS3Client,
+  signingS3Client,
   bucketName,
   ensureBucketExists,
   generateUploadPresignedUrl,

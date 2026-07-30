@@ -8,7 +8,6 @@ import {
   Car,
   Camera,
   AlertTriangle,
-  Gauge,
   Image as ImageIcon,
   X,
   Maximize2,
