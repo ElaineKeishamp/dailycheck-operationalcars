@@ -22,12 +22,19 @@ services:
 
   minio:
     image: ${MINIO_SERVER_IMAGE:?MINIO_SERVER_IMAGE must be an approved pinned tag or digest}
-    command: server /data --address ":9000" --console-address ":9001"
+    command: server --console-address ":9001" /data --license /minio.license
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - /data/dailycheck/minio:/data
+      - /opt/dailycheck-staging/secrets/minio.license:/minio.license:ro
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
     networks:
       - app
@@ -48,7 +55,7 @@ services:
     entrypoint: ["/bin/sh", "/init.sh"]
     depends_on:
       minio:
-        condition: service_started
+        condition: service_healthy
     restart: "no"
     networks:
       - app

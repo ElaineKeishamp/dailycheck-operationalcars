@@ -4,12 +4,15 @@
 
 The staging foundation runs one Docker Compose project on an Ubuntu 22.04 VM. Nginx is the only public gateway and eventually terminates TLS for the application host and the storage host. The React/PWA build is served by Nginx, API requests under `/api/` proxy to the Node.js backend, and browser presigned S3 requests proxy to MinIO through the storage virtual host.
 
-PostgreSQL, the backend, MinIO API, and MinIO Console stay private on the Docker network. Persistent data is stored under `/data/dailycheck`.
+PostgreSQL, the backend, MinIO API, and MinIO Console stay private on the Docker network. Persistent data is stored under `/data/dailycheck`. This is a single-node staging deployment, not a production high-availability topology.
+
+MinIO storage uses MinIO AIStor Free with the approved pinned image digest `quay.io/minio/aistor/minio@sha256:17527b97a9e92dcc32b641dc161e4beb1eaf9a9198018c1489923c981f4af2ef`. Verified versions: AIStor Server `RELEASE.2026-07-24T16-43-31Z`; AIStor Client `mc` `RELEASE.2026-07-24T01-15-12Z`. Image upgrades require a controlled digest update and validation.
 
 ## Required Paths
 
 - `/opt/dailycheck-staging/app`
 - `/opt/dailycheck-staging/secrets/staging.env`
+- `/opt/dailycheck-staging/secrets/minio.license`
 - `/data/dailycheck/postgres`
 - `/data/dailycheck/minio`
 - `/data/dailycheck/backups`
@@ -33,6 +36,15 @@ chmod 600 /opt/dailycheck-staging/secrets/staging.env
 ```
 
 Fill in real staging-only values in `staging.env`. Passwords inside `DATABASE_URL` must be URL-encoded when they contain reserved URL characters.
+
+Place the AIStor license only at `/opt/dailycheck-staging/secrets/minio.license`, owned by `root:root` with mode `600`:
+
+```sh
+chown root:root /opt/dailycheck-staging/secrets/minio.license
+chmod 600 /opt/dailycheck-staging/secrets/minio.license
+```
+
+The license is mounted read-only into the MinIO container as `/minio.license`. Never commit, print, or copy the license into the repository.
 
 ## Compose Commands
 
@@ -71,7 +83,7 @@ Avoid `docker compose down -v` because it removes volumes. This project uses bin
 
 ## Startup Flow
 
-Compose starts PostgreSQL and waits for `pg_isready` to report healthy. It starts the MinIO server process without a MinIO container healthcheck, because the approved pinned server image has not been selected and may not include `curl`, `wget`, or another HTTP utility. The one-shot `minio-init` service is the MinIO readiness gate: it waits for the MinIO API with a bounded retry loop, creates the private bucket if needed, creates the application user and policy only when missing, validates application credential access to the bucket, applies bucket CORS, then exits successfully. The backend waits for healthy PostgreSQL and completed `minio-init`; the gateway waits for the healthy backend.
+Compose starts PostgreSQL and waits for `pg_isready` to report healthy. It starts AIStor with `/minio.license` mounted read-only and waits for `mc ready local` to report healthy. The one-shot `minio-init` service then creates the private bucket if needed, creates the application user and policy only when missing, validates application credential access to the bucket, applies bucket CORS, then exits successfully. The backend waits for healthy PostgreSQL and completed `minio-init`; the gateway waits for the healthy backend.
 
 ## Verification
 
@@ -80,6 +92,7 @@ Compose starts PostgreSQL and waits for `pg_isready` to report healthy. It start
 - Confirm bucket CORS allows only the exact `APP_ORIGIN` and the required `PUT`, `GET`, and `HEAD` methods.
 - Confirm ports `3000`, `5432`, `9000`, and `9001` are not published on the host.
 - Confirm MinIO Console is not reachable publicly.
+- Confirm `/opt/dailycheck-staging/secrets/minio.license` exists only on the VM, has owner `root:root`, has mode `600`, and is mounted read-only.
 
 ## PostgreSQL Initialization
 
