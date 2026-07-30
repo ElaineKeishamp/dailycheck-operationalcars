@@ -92,7 +92,7 @@ async function getCheckedTodayVehicleIds() {
 
 async function getAllReports({ date, status }) {
   let query = `
-    SELECT dc.daily_id, dc.check_date, dc.status, dc.created_at,
+    SELECT dc.daily_id, dc.users_id, dc.vehicle_id, dc.check_date, dc.status, dc.created_at,
            u.name as driver_name, u.email as driver_email,
            v.plate_number, v.brand, v.model,
            (SELECT COUNT(*) FROM check_photos cp WHERE cp.daily_id = dc.daily_id) as photo_count

@@ -173,8 +173,9 @@ async function startDailyCheck(req, res) {
 
   try {
     const user = await userModel.findById(userId);
+    const driverName = typeof actual_driver_name === 'string' ? actual_driver_name.trim() : '';
 
-    if (user?.is_shared_account && !actual_driver_name) {
+    if (user?.is_shared_account && !driverName) {
       return res.status(400).json({ error: 'Nama driver wajib diisi untuk akun ini' });
     }
 
@@ -191,7 +192,7 @@ async function startDailyCheck(req, res) {
     const dailyCheck = await dailyCheckModel.createDailyCheck({
       users_id: userId,
       vehicle_id,
-      actual_driver_name,
+      actual_driver_name: user?.is_shared_account ? driverName : null,
       gps_lat,
       gps_long,
       gps_address,

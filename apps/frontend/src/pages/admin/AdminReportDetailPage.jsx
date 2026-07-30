@@ -50,7 +50,9 @@ function formatTime(dateStr) {
  */
 function PhotoCard({ photo, onPreview }) {
   const hasNote = photo.note && photo.note.trim();
-  const label = PART_LABELS[photo.part_type] || photo.part_type;
+  const label = photo.part_type === 'ban' && photo.part_index
+    ? `Ban ${photo.part_index}`
+    : PART_LABELS[photo.part_type] || photo.part_type;
   const photoUrl = photo.url;
 
   return (
@@ -211,7 +213,11 @@ export default function AdminReportDetailPage() {
               <InfoCard label="Driver">
                 <div className="flex items-center gap-2">
                   <User size={14} className="text-slate-400" />
-                  <span>{report.driver_name || '—'}</span>
+                  <span>
+                    {report.actual_driver_name
+                      ? `${report.actual_driver_name} (${report.driver_name || 'akun shared'})`
+                      : report.driver_name || '—'}
+                  </span>
                   {report.actual_driver_name && (
                     <RoleBadge role="driver" isShared />
                   )}
