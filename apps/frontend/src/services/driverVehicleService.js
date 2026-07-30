@@ -9,6 +9,7 @@ function normalizeVehicle(vehicle) {
     brand: vehicle.brand,
     model: vehicle.model,
     status: vehicle.status,
+    checked_today: Boolean(vehicle.checked_today),
   };
 
   if (!normalized.vehicle_id || !normalized.plate_number) return null;
