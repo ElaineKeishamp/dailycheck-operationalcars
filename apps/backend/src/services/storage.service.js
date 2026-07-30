@@ -138,6 +138,22 @@ function isSafeObjectKey(key) {
     && !/[\\\0\r\n]/.test(key);
 }
 
+function isSafeObjectPrefix(prefix) {
+  if (typeof prefix !== 'string') return false;
+  if (prefix.length === 0 || prefix.length > 1024) return false;
+  if (!prefix.startsWith('inspections/')) return false;
+  if (prefix.startsWith('/')) return false;
+  if (prefix.includes('..')) return false;
+  if (/[\\\0\r\n]/.test(prefix)) return false;
+
+  const segments = prefix.split('/');
+  const hasEmptyInternalSegment = segments
+    .slice(0, prefix.endsWith('/') ? -1 : undefined)
+    .some((segment) => segment.length === 0);
+
+  return !hasEmptyInternalSegment;
+}
+
 async function deleteObject(key) {
   if (!isSafeObjectKey(key)) {
     throw new Error('Object key tidak valid');
@@ -151,14 +167,18 @@ async function deleteObject(key) {
   return true;
 }
 
-async function listInspectionObjects({ olderThanDate } = {}) {
+async function listInspectionObjects({ olderThanDate, prefix = 'inspections/' } = {}) {
+  if (!isSafeObjectPrefix(prefix)) {
+    throw new Error('Object prefix tidak valid');
+  }
+
   const objects = [];
   let continuationToken;
 
   do {
     const result = await s3Client.send(new ListObjectsV2Command({
       Bucket: bucketName,
-      Prefix: 'inspections/',
+      Prefix: prefix,
       ContinuationToken: continuationToken,
     }));
 
@@ -187,6 +207,7 @@ module.exports = {
   objectExists,
   getObjectMetadata,
   isSafeObjectKey,
+  isSafeObjectPrefix,
   deleteObject,
   listInspectionObjects,
 };

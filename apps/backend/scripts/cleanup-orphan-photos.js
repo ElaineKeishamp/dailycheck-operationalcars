@@ -3,11 +3,13 @@ const storageService = require('../src/services/storage.service');
 const dailyCheckModel = require('../src/models/dailyCheck.model');
 
 const DEFAULT_OLDER_THAN_HOURS = 24;
+const DEFAULT_PREFIX = 'inspections/';
 
 function parseArgs(argv) {
   const args = {
     apply: false,
     olderThanHours: DEFAULT_OLDER_THAN_HOURS,
+    prefix: DEFAULT_PREFIX,
   };
 
   argv.forEach((arg) => {
@@ -22,6 +24,14 @@ function parseArgs(argv) {
         throw new Error('--older-than-hours must be a positive number');
       }
       args.olderThanHours = value;
+    }
+
+    if (arg.startsWith('--prefix=')) {
+      const prefix = arg.split('=')[1];
+      if (!storageService.isSafeObjectPrefix(prefix)) {
+        throw new Error('--prefix must stay inside inspections/ and must not contain traversal or unsafe characters');
+      }
+      args.prefix = prefix;
     }
   });
 
@@ -40,11 +50,11 @@ async function main() {
 
   console.log('=== DailyCheck Orphan Photo Cleanup ===');
   console.log(`Mode: ${args.apply ? 'apply' : 'dry-run'}`);
-  console.log(`Namespace: inspections/`);
+  console.log(`Namespace: ${args.prefix}`);
   console.log(`Older than hours: ${args.olderThanHours}`);
 
   const [objects, confirmedKeys] = await Promise.all([
-    storageService.listInspectionObjects({ olderThanDate }),
+    storageService.listInspectionObjects({ olderThanDate, prefix: args.prefix }),
     dailyCheckModel.getConfirmedPhotoKeys(),
   ]);
 

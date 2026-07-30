@@ -19,6 +19,25 @@ node scripts/cleanup-orphan-photos.js --apply --older-than-hours=24
 
 The default threshold is 24 hours. Use a conservative value so fresh uploads that may still be awaiting confirmation are not removed.
 
+For QA or tightly scoped maintenance, narrow the scan with a safe `inspections/` prefix:
+
+```bash
+node scripts/cleanup-orphan-photos.js \
+  --prefix=inspections/phase12-cleanup-test/example-run/ \
+  --older-than-hours=1
+```
+
+Scoped deletion still requires `--apply`:
+
+```bash
+node scripts/cleanup-orphan-photos.js \
+  --apply \
+  --prefix=inspections/phase12-cleanup-test/example-run/ \
+  --older-than-hours=1
+```
+
+Invalid prefixes are rejected. A custom prefix must remain inside `inspections/`, must not contain path traversal or backslashes, and must only narrow the object listing.
+
 Operational notes:
 
 - No scheduler or background job is installed.
