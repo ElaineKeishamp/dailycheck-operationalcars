@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middlewares/auth');
+const { verifyToken, requireDriver } = require('../middlewares/auth');
 const {
 	startDailyCheck,
 	getActiveDailyCheck,
@@ -23,6 +23,7 @@ const VALID_PART_TYPES = [
 router.post(
 	'/',
 	verifyToken,
+	requireDriver,
 	[
 		body('vehicle_id').notEmpty().withMessage('vehicle_id wajib diisi'),
 		body('gps_lat').optional().isFloat().withMessage('gps_lat harus angka'),
@@ -35,6 +36,7 @@ router.post(
 router.get(
 	'/active',
 	verifyToken,
+	requireDriver,
 	[
 		query('vehicle_id').notEmpty().withMessage('vehicle_id wajib diisi'),
 		validate,
@@ -42,13 +44,14 @@ router.get(
 	getActiveDailyCheck
 );
 
-router.get('/my-today', verifyToken, getMyTodayCheck);
-router.get('/my-history', verifyToken, getMyHistory);
+router.get('/my-today', verifyToken, requireDriver, getMyTodayCheck);
+router.get('/my-history', verifyToken, requireDriver, getMyHistory);
 
 // Minta Presigned Upload URL ke MinIO
 router.post(
 	'/:dailyCheckId/photo-url',
 	verifyToken,
+	requireDriver,
 	[
 		param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'),
 		body('part_type').notEmpty().isIn(VALID_PART_TYPES).withMessage('part_type tidak valid'),
@@ -63,6 +66,7 @@ router.post(
 router.post(
 	'/:dailyCheckId/photos',
 	verifyToken,
+	requireDriver,
 	[
 		param('dailyCheckId').isUUID().withMessage('dailyCheckId tidak valid'),
 		body('upload_ticket').notEmpty().isString().withMessage('upload_ticket wajib diisi'),
@@ -75,6 +79,7 @@ router.post(
 router.post(
 	'/:dailyCheckId/photo-uploads/cancel',
 	verifyToken,
+	requireDriver,
 	[
 		param('dailyCheckId').isUUID().withMessage('dailyCheckId tidak valid'),
 		body('upload_ticket').notEmpty().isString().withMessage('upload_ticket wajib diisi'),
@@ -86,6 +91,7 @@ router.post(
 router.get(
 	'/:dailyCheckId/photos',
 	verifyToken,
+	requireDriver,
 	[param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'), validate],
 	getDailyCheckPhotos
 );
@@ -93,6 +99,7 @@ router.get(
 router.delete(
 	'/:dailyCheckId/photos/:photoId',
 	verifyToken,
+	requireDriver,
 	[
 		param('dailyCheckId').isUUID().withMessage('dailyCheckId tidak valid'),
 		param('photoId').isUUID().withMessage('photoId tidak valid'),
@@ -101,6 +108,6 @@ router.delete(
 	deleteDailyCheckPhoto
 );
 
-router.post('/:dailyCheckId/submit', verifyToken, [param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'), validate], submitDailyCheck);
+router.post('/:dailyCheckId/submit', verifyToken, requireDriver, [param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'), validate], submitDailyCheck);
 
 module.exports = router;
