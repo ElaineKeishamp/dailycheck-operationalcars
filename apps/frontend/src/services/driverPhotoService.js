@@ -14,6 +14,14 @@ function withCode(error, code) {
   return wrappedError;
 }
 
+function formatPresignedUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return url.replace(/^http:\/\/(localhost|127\.0\.0\.1):9000/, window.location.origin);
+  }
+  return url;
+}
+
 function normalizeUploadedPhoto(responsePhoto) {
   if (!responsePhoto?.check_photos_id) {
     throw new Error('Response upload foto tidak valid');
@@ -36,6 +44,7 @@ function normalizeUploadedPhoto(responsePhoto) {
     r2Key: responsePhoto.r2_key,
     thumbnail_key: responsePhoto.thumbnail_key,
     thumbnailKey: responsePhoto.thumbnail_key,
+    url: formatPresignedUrl(responsePhoto.url),
     note: responsePhoto.note || '',
     created_at: responsePhoto.created_at,
     createdAt: responsePhoto.created_at,
@@ -65,7 +74,7 @@ export async function requestPhotoUploadUrl({ dailyCheckId, draft, contentType, 
     }
 
     return {
-      uploadUrl: response.data.upload_url,
+      uploadUrl: formatPresignedUrl(response.data.upload_url),
       key: response.data.key,
       objectKey: response.data.object_key || response.data.key,
       uploadTicket: response.data.upload_ticket,

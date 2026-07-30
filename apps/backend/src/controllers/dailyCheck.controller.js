@@ -54,15 +54,29 @@ function getLogicalSlot(partType, partIndex) {
   return partType === 'ban' ? `${partType}_${partIndex}` : partType;
 }
 
-function getPhotoKeyPrefix(dailyCheckId) {
-  const year = new Date().getFullYear();
-  return `inspections/${year}/${dailyCheckId}/`;
+function slugify(text) {
+  if (!text) return '';
+  return String(text).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
 
-function isSafePhotoKey({ key, dailyCheckId, partType, partIndex }) {
+function getPhotoKeyPrefix(dailyCheck, reqUser) {
+  const dateObj = dailyCheck?.created_at ? new Date(dailyCheck.created_at) : new Date();
+  const YYYY = dateObj.getFullYear();
+  const MM = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const DD = String(dateObj.getDate()).padStart(2, '0');
+
+  const rawDriverName = dailyCheck?.actual_driver_name || dailyCheck?.driver_name || reqUser?.name || 'driver';
+  const driverFolder = slugify(rawDriverName) || 'driver';
+  const plateFolder = slugify(dailyCheck?.plate_number) || 'mobil';
+  const dailyId = dailyCheck?.daily_id || 'session';
+
+  return `inspections/${YYYY}/${MM}/${DD}/${driverFolder}/${plateFolder}_${dailyId}/`;
+}
+
+function isSafePhotoKey({ key, partType, partIndex }) {
   if (!key || typeof key !== 'string') return false;
   const slot = getLogicalSlot(partType, partIndex);
-  const keyPattern = new RegExp(`^inspections/\\d{4}/${dailyCheckId}/${slot}_[^/]+\\.(jpe?g|png|webp)$`, 'i');
+  const keyPattern = new RegExp(`^inspections/.*${slot}_[^/]+\\.(jpe?g|png|webp)$`, 'i');
   return keyPattern.test(key);
 }
 
@@ -259,7 +273,7 @@ async function getPhotoUploadUrl(req, res) {
 
     const uniqueValue = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     const extension = getExtensionForContentType(mimeType);
-    const key = `${getPhotoKeyPrefix(dailyCheckId)}${getLogicalSlot(part_type, slotValidation.partIndex)}_${uniqueValue}.${extension}`;
+    const key = `${getPhotoKeyPrefix(dailyCheck, req.user)}${getLogicalSlot(part_type, slotValidation.partIndex)}_${uniqueValue}.${extension}`;
 
     const { uploadUrl, expiresIn } = await storageService.generateUploadPresignedUrl(key, mimeType, 300);
     const uploadTicket = createUploadTicket({
