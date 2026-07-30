@@ -8,6 +8,7 @@ const {
 	getMyHistory,
 	getPhotoUploadUrl,
 	uploadPhoto,
+	cancelPhotoUpload,
 	getDailyCheckPhotos,
 	deleteDailyCheckPhoto,
 	submitDailyCheck,
@@ -63,14 +64,23 @@ router.post(
 	'/:dailyCheckId/photos',
 	verifyToken,
 	[
-		param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'),
-		body('part_type').notEmpty().isIn(VALID_PART_TYPES).withMessage('part_type tidak valid'),
-		body('part_index').optional({ nullable: true }).isInt({ min: 1, max: 4 }).withMessage('part_index harus 1 sampai 4'),
-		body('key').notEmpty().isString().withMessage('key wajib diisi'),
+		param('dailyCheckId').isUUID().withMessage('dailyCheckId tidak valid'),
+		body('upload_ticket').notEmpty().isString().withMessage('upload_ticket wajib diisi'),
 		body('note').optional().isString(),
 		validate,
 	],
 	uploadPhoto
+);
+
+router.post(
+	'/:dailyCheckId/photo-uploads/cancel',
+	verifyToken,
+	[
+		param('dailyCheckId').isUUID().withMessage('dailyCheckId tidak valid'),
+		body('upload_ticket').notEmpty().isString().withMessage('upload_ticket wajib diisi'),
+		validate,
+	],
+	cancelPhotoUpload
 );
 
 router.get(

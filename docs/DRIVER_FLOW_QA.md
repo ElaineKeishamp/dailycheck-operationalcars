@@ -24,6 +24,17 @@ Use this checklist for focused regression passes on the driver daily-check flow.
 - Confirm every accepted photo includes the watermark with date/time and GPS coordinates.
 - Simulate a failed upload and confirm retry is available without enabling submit.
 - Confirm the frontend uses the presigned URL flow and does not send `multipart/form-data`.
+- Simulate MinIO PUT success followed by failed photo confirmation and confirm progress does not increase.
+- Confirm `Coba Konfirmasi Lagi` calls only backend confirmation and does not repeat the MinIO PUT.
+- Simulate the first confirmation succeeding while the response is lost and confirm retry restores the same confirmed row.
+- Send two confirmation requests for the same ticket and confirm only one row exists.
+- Refresh with a pending confirmation and confirm the UI shows an explicit pending state without auto-confirming.
+- Confirm expired ticket and missing-object responses require a new upload.
+- Cancel a pending upload and confirm the slot returns to captured/empty state without a confirmed row.
+- Attempt to cancel an already-confirmed upload and confirm it is rejected.
+- Confirm submit remains disabled while confirmation is pending.
+- Race confirmation against submit and confirm the backend row lock preserves a consistent result.
+- Confirm reconnecting does not automatically retry confirmation.
 
 ## Delete Uploaded Photo And Retake
 

@@ -217,9 +217,12 @@ Untuk ban, gunakan `part_type: "ban"` dan `part_index` 1 sampai 4. Untuk part se
 {
   "upload_url": "http://localhost:9000/dailycheck-photos/inspections/2026/uuid/odo_12345.jpg?X-Amz-Algorithm=...",
   "key": "inspections/2026/uuid/odo_12345.jpg",
+  "object_key": "inspections/2026/uuid/odo_12345.jpg",
+  "upload_ticket": "signed-short-lived-ticket",
   "part_type": "odo",
   "part_index": null,
-  "expires_in": 300
+  "expires_in": 300,
+  "expires_at": "2026-07-30T10:00:00.000Z"
 }
 ```
 
@@ -229,6 +232,7 @@ Untuk ban, gunakan `part_type: "ban"` dan `part_index` 1 sampai 4. Untuk part se
 - `content_type` harus `image/jpeg`, `image/png`, atau `image/webp`.
 - Backend yang membuat object key; client tidak boleh mengirim key buatan sendiri pada tahap ini.
 - Slot foto yang sudah ada akan ditolak dengan `409`.
+- `upload_ticket` adalah bukti upload yang ditandatangani backend untuk user, daily check, slot, content type, dan object key yang sama. Ticket ini bukan token login dan tetap harus dipakai bersama `Authorization`.
 
 ---
 
@@ -240,14 +244,12 @@ Konfirmasi pendaftaran foto setelah berhasil di-upload ke MinIO.
 **Request Body:**
 ```json
 {
-  "part_type": "odo",
-  "part_index": null,
-  "key": "inspections/2026/uuid/odo_12345.jpg",
+  "upload_ticket": "signed-short-lived-ticket",
   "note": "Kondisi baik, lecet halus"
 }
 ```
 
-Backend memverifikasi key berada di namespace daily check yang benar dan object sudah ada di MinIO sebelum membuat row database.
+Backend memverifikasi `upload_ticket`, mengambil slot dan object key dari ticket, memastikan object sudah ada di MinIO, lalu membuat atau mengembalikan row database. Client tidak boleh mengirim storage key untuk konfirmasi.
 
 **Response Sukses (201):**
 ```json
@@ -265,6 +267,8 @@ Backend memverifikasi key berada di namespace daily check yang benar dan object 
 }
 ```
 
+Jika konfirmasi yang sama dikirim ulang setelah response pertama hilang, endpoint mengembalikan row yang sama dengan `200` dan `already_confirmed: true`.
+
 **Rules `part_index`:**
 - `ban` wajib memakai integer `1`, `2`, `3`, atau `4`.
 - Part selain `ban` harus `null` atau tidak mengirim `part_index`.
@@ -276,9 +280,46 @@ Backend memverifikasi key berada di namespace daily check yang benar dan object 
 - `lainnya` saat ini juga satu slot per daily check sesuai UI driver.
 
 **Response gagal:**
-- `400` - part/key/content tidak valid
+- `400` - ticket/content/object metadata tidak valid atau ticket kedaluwarsa
 - `404` - daily check tidak ditemukan atau object belum ada di MinIO
-- `409` - daily check sudah submitted atau slot foto sudah ada
+- `409` - daily check sudah submitted atau slot foto sudah dikonfirmasi dengan object lain
+- `500` - kegagalan server/storage/database
+
+Konfirmasi dan submit mengunci row `daily_checks` yang sama dengan PostgreSQL `FOR UPDATE`. Jika submit selesai lebih dulu, konfirmasi ditolak `409`. Jika konfirmasi selesai lebih dulu, submit melihat foto yang sudah terkonfirmasi.
+
+---
+
+## POST /daily-checks/:dailyCheckId/photo-uploads/cancel
+Batalkan object yang sudah terupload ke MinIO tetapi belum terkonfirmasi sebagai row `check_photos`.
+
+**Headers:** `Authorization: Bearer <token_driver>`
+
+**Request Body:**
+```json
+{
+  "upload_ticket": "signed-short-lived-ticket"
+}
+```
+
+Backend memverifikasi ticket, mengunci daily check, memastikan object key belum tercatat di `check_photos`, lalu menghapus object MinIO. Object yang sudah hilang dianggap aman untuk dibersihkan.
+
+**Response Sukses (200):**
+```json
+{
+  "message": "Upload tertunda berhasil dibatalkan.",
+  "data": {
+    "daily_id": "uuid",
+    "part_type": "odo",
+    "part_index": null
+  }
+}
+```
+
+**Response gagal:**
+- `400` - ticket tidak valid/kedaluwarsa
+- `403` - user bukan driver
+- `404` - daily check tidak ditemukan
+- `409` - object sudah tercatat sebagai foto laporan
 - `500` - kegagalan server/storage/database
 
 ---

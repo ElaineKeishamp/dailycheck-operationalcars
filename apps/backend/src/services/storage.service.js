@@ -6,6 +6,7 @@ const {
   CreateBucketCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
 } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 require('dotenv').config();
@@ -102,6 +103,31 @@ async function objectExists(key) {
   }
 }
 
+async function getObjectMetadata(key) {
+  if (!isSafeObjectKey(key)) {
+    throw new Error('Object key tidak valid');
+  }
+
+  try {
+    const result = await s3Client.send(new HeadObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    }));
+
+    return {
+      exists: true,
+      contentType: result.ContentType || null,
+      contentLength: result.ContentLength ?? null,
+      lastModified: result.LastModified || null,
+    };
+  } catch (err) {
+    if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
+      return { exists: false };
+    }
+    throw err;
+  }
+}
+
 function isSafeObjectKey(key) {
   return typeof key === 'string'
     && key.length > 0
@@ -125,6 +151,33 @@ async function deleteObject(key) {
   return true;
 }
 
+async function listInspectionObjects({ olderThanDate } = {}) {
+  const objects = [];
+  let continuationToken;
+
+  do {
+    const result = await s3Client.send(new ListObjectsV2Command({
+      Bucket: bucketName,
+      Prefix: 'inspections/',
+      ContinuationToken: continuationToken,
+    }));
+
+    (result.Contents || []).forEach((object) => {
+      if (!isSafeObjectKey(object.Key)) return;
+      if (olderThanDate && object.LastModified && object.LastModified >= olderThanDate) return;
+      objects.push({
+        key: object.Key,
+        lastModified: object.LastModified || null,
+        size: object.Size ?? null,
+      });
+    });
+
+    continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return objects;
+}
+
 module.exports = {
   s3Client,
   bucketName,
@@ -132,5 +185,8 @@ module.exports = {
   generateUploadPresignedUrl,
   generateViewPresignedUrl,
   objectExists,
+  getObjectMetadata,
+  isSafeObjectKey,
   deleteObject,
+  listInspectionObjects,
 };

@@ -3,6 +3,7 @@ import apiClient from '../api/client';
 const UPLOAD_PREPARE_FAILED = 'UPLOAD_PREPARE_FAILED';
 const UPLOAD_STORAGE_FAILED = 'UPLOAD_STORAGE_FAILED';
 const UPLOAD_CONFIRM_FAILED = 'UPLOAD_CONFIRM_FAILED';
+const UPLOAD_CANCEL_FAILED = 'UPLOAD_CANCEL_FAILED';
 
 function withCode(error, code) {
   const wrappedError = new Error(error?.message || 'Upload foto gagal');
@@ -47,7 +48,7 @@ function getContentType(draft) {
   return ['image/jpeg', 'image/png', 'image/webp'].includes(type) ? type : 'image/jpeg';
 }
 
-async function requestPhotoUploadUrl({ dailyCheckId, draft, contentType, signal }) {
+export async function requestPhotoUploadUrl({ dailyCheckId, draft, contentType, signal }) {
   try {
     const response = await apiClient.post(
       `/daily-checks/${dailyCheckId}/photo-url`,
@@ -59,21 +60,24 @@ async function requestPhotoUploadUrl({ dailyCheckId, draft, contentType, signal 
       { signal },
     );
 
-    if (!response.data?.upload_url || !response.data?.key) {
+    if (!response.data?.upload_url || !response.data?.key || !response.data?.upload_ticket) {
       throw new Error('Response upload URL tidak valid');
     }
 
     return {
       uploadUrl: response.data.upload_url,
       key: response.data.key,
+      objectKey: response.data.object_key || response.data.key,
+      uploadTicket: response.data.upload_ticket,
       expiresIn: response.data.expires_in,
+      expiresAt: response.data.expires_at,
     };
   } catch (error) {
     throw withCode(error, UPLOAD_PREPARE_FAILED);
   }
 }
 
-async function uploadPhotoToPresignedUrl({ uploadUrl, blob, contentType, signal }) {
+export async function uploadPhotoToPresignedUrl({ uploadUrl, blob, contentType, signal }) {
   let response;
 
   try {
@@ -94,15 +98,13 @@ async function uploadPhotoToPresignedUrl({ uploadUrl, blob, contentType, signal 
   }
 }
 
-async function confirmDailyCheckPhoto({ dailyCheckId, draft, key, signal }) {
+export async function confirmDailyCheckPhoto({ dailyCheckId, uploadTicket, note, signal }) {
   try {
     const response = await apiClient.post(
       `/daily-checks/${dailyCheckId}/photos`,
       {
-        part_type: draft.partType,
-        part_index: draft.partIndex ?? null,
-        key,
-        note: draft.note || undefined,
+        upload_ticket: uploadTicket,
+        note: note || undefined,
       },
       { signal },
     );
@@ -110,6 +112,20 @@ async function confirmDailyCheckPhoto({ dailyCheckId, draft, key, signal }) {
     return normalizeUploadedPhoto(response.data?.photo);
   } catch (error) {
     throw withCode(error, UPLOAD_CONFIRM_FAILED);
+  }
+}
+
+export async function cancelPendingPhotoUpload({ dailyCheckId, uploadTicket, signal }) {
+  try {
+    const response = await apiClient.post(
+      `/daily-checks/${dailyCheckId}/photo-uploads/cancel`,
+      { upload_ticket: uploadTicket },
+      { signal },
+    );
+
+    return response.data?.data || null;
+  } catch (error) {
+    throw withCode(error, UPLOAD_CANCEL_FAILED);
   }
 }
 
@@ -123,7 +139,7 @@ export async function uploadDailyCheckPhoto({ dailyCheckId, draft, signal }) {
   }
 
   const contentType = getContentType(draft);
-  const { uploadUrl, key } = await requestPhotoUploadUrl({
+  const { uploadUrl, uploadTicket } = await requestPhotoUploadUrl({
     dailyCheckId,
     draft,
     contentType,
@@ -139,8 +155,8 @@ export async function uploadDailyCheckPhoto({ dailyCheckId, draft, signal }) {
 
   return confirmDailyCheckPhoto({
     dailyCheckId,
-    draft,
-    key,
+    uploadTicket,
+    note: draft.note,
     signal,
   });
 }
@@ -157,6 +173,7 @@ export async function getDailyCheckPhotos({ dailyCheckId, signal }) {
 
 export {
   UPLOAD_CONFIRM_FAILED,
+  UPLOAD_CANCEL_FAILED,
   UPLOAD_PREPARE_FAILED,
   UPLOAD_STORAGE_FAILED,
 };
