@@ -5,16 +5,16 @@ import Avatar from '../../components/admin/ui/Avatar';
 import { SkeletonCard, SkeletonLine } from '../../components/admin/ui/Skeleton';
 
 function StatCard({ icon: Icon, iconBg, label, value, badge, loading, sublabel }) {
-  if (loading) return <SkeletonCard className="flex-1 min-w-[200px]" />;
+  if (loading) return <SkeletonCard />;
 
   return (
-    <div className="admin-card p-5 flex items-center gap-4 flex-1 min-w-[200px]">
+    <div className="admin-card flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
       <div className={`w-12 h-12 ${iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
         <Icon size={22} className="text-current" />
       </div>
-      <div>
-        <p className="text-sm text-slate-500 font-medium">{label}</p>
-        <div className="flex items-baseline gap-2 mt-0.5">
+      <div className="min-w-0">
+        <p className="break-words text-sm font-medium text-slate-500">{label}</p>
+        <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
           <span className="text-3xl font-bold text-slate-900">{value ?? '—'}</span>
           {badge && (
             <span className="text-xs font-semibold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
@@ -70,10 +70,10 @@ export default function AdminDashboardPage() {
   const belumDrivers = driverStats.belum_checking || [];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="min-w-0 space-y-6 animate-fade-in">
       {/* Error banner */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
           <AlertTriangle size={18} className="text-red-500 flex-shrink-0" />
           <p className="text-sm text-red-700">{error}</p>
           <button
@@ -92,7 +92,7 @@ export default function AdminDashboardPage() {
           <Car size={18} className="text-blue-600" />
           <h3 className="font-bold text-slate-800 text-base">Status Mobil Operasional Hari Ini</h3>
         </div>
-        <div className="flex flex-wrap gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <StatCard
             icon={Car}
             iconBg="bg-blue-50 text-blue-600"
@@ -124,7 +124,7 @@ export default function AdminDashboardPage() {
           <Users size={18} className="text-purple-600" />
           <h3 className="font-bold text-slate-800 text-base">Status Akun Driver Hari Ini</h3>
         </div>
-        <div className="flex flex-wrap gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <StatCard
             icon={Users}
             iconBg="bg-purple-50 text-purple-600"
@@ -153,17 +153,17 @@ export default function AdminDashboardPage() {
       {/* Belum checking section with Dual Tab */}
       <div className="admin-card overflow-hidden">
         {/* Header with Tab Navigation */}
-        <div className="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
           <div>
             <h2 className="font-bold text-slate-900 text-base">Daftar Belum Checking Hari Ini</h2>
             <p className="text-xs text-slate-400 mt-0.5">Pilih perspektif berdasarkan Mobil Operasional atau Akun Driver</p>
           </div>
 
           {/* Tab Switch Buttons */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+          <div className="grid grid-cols-1 gap-1 rounded-xl bg-slate-100 p-1 sm:flex sm:items-center">
             <button
               onClick={() => setActiveTab('vehicle')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center justify-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
                 activeTab === 'vehicle'
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
@@ -174,7 +174,7 @@ export default function AdminDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('driver')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center justify-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
                 activeTab === 'driver'
                   ? 'bg-white text-purple-600 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
@@ -212,8 +212,8 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
             ) : (
-              <div>
-                <div className="grid grid-cols-[1.5fr_1.5fr_auto] px-5 py-2.5 bg-slate-50 border-b border-slate-100">
+              <div className="overflow-x-auto">
+                <div className="grid min-w-[560px] grid-cols-[1.5fr_1.5fr_auto] border-b border-slate-100 bg-slate-50 px-5 py-2.5">
                   <span className="th-cell p-0 text-xs text-slate-400 font-semibold uppercase tracking-wide">
                     Plat Nomor
                   </span>
@@ -228,7 +228,7 @@ export default function AdminDashboardPage() {
                 {belumVehicles.map((v) => (
                   <div
                     key={v.vehicle_id}
-                    className="grid grid-cols-[1.5fr_1.5fr_auto] items-center px-5 py-4 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors"
+                    className="grid min-w-[560px] grid-cols-[1.5fr_1.5fr_auto] items-center border-b border-slate-50 px-5 py-4 transition-colors last:border-0 hover:bg-slate-50/60"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xs">
@@ -278,8 +278,8 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
             ) : (
-              <div>
-                <div className="grid grid-cols-[1fr_1fr_auto] px-5 py-2.5 bg-slate-50 border-b border-slate-100">
+              <div className="overflow-x-auto">
+                <div className="grid min-w-[560px] grid-cols-[1fr_1fr_auto] border-b border-slate-100 bg-slate-50 px-5 py-2.5">
                   <span className="th-cell p-0 text-xs text-slate-400 font-semibold uppercase tracking-wide">
                     Nama Driver
                   </span>
@@ -294,7 +294,7 @@ export default function AdminDashboardPage() {
                 {belumDrivers.map((driver) => (
                   <div
                     key={driver.users_id}
-                    className="grid grid-cols-[1fr_1fr_auto] items-center px-5 py-4 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors"
+                    className="grid min-w-[560px] grid-cols-[1fr_1fr_auto] items-center border-b border-slate-50 px-5 py-4 transition-colors last:border-0 hover:bg-slate-50/60"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar name={driver.name} size="md" />

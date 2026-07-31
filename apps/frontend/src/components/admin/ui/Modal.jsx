@@ -42,7 +42,7 @@ export default function Modal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -51,15 +51,15 @@ export default function Modal({
 
       {/* Modal panel */}
       <div
-        className={`relative bg-white rounded-2xl shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto animate-fade-in`}
+        className={`relative w-full max-w-[calc(100vw-1.5rem)] bg-white rounded-2xl shadow-2xl ${maxWidth} max-h-[90vh] overflow-y-auto animate-fade-in sm:max-w-[calc(100vw-2rem)]`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between p-6 pb-4 border-b border-slate-100">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+        <div className="flex items-start justify-between border-b border-slate-100 p-4 pb-3 sm:p-6 sm:pb-4">
+          <div className="min-w-0">
+            <h2 className="break-words text-lg font-semibold text-slate-900">{title}</h2>
             {subtitle && (
-              <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+              <p className="mt-0.5 break-words text-sm text-slate-500">{subtitle}</p>
             )}
           </div>
           <button
@@ -72,7 +72,7 @@ export default function Modal({
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {children}
         </div>
       </div>

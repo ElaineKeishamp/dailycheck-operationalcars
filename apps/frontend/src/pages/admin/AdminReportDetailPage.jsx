@@ -110,9 +110,9 @@ function PhotoCard({ photo, onPreview }) {
 
 function InfoCard({ label, children }) {
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">{label}</p>
-      <div className="text-sm font-medium text-slate-800">{children}</div>
+      <div className="min-w-0 break-words text-sm font-medium text-slate-800">{children}</div>
     </div>
   );
 }
@@ -151,9 +151,9 @@ export default function AdminReportDetailPage() {
   const otherPhotos = photos.filter((p) => p.part_type !== 'ban');
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="min-w-0 space-y-5 animate-fade-in">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
         <button
           onClick={() => navigate('/admin/reports')}
           className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition-colors"
@@ -200,7 +200,7 @@ export default function AdminReportDetailPage() {
         <>
           {/* Info card */}
           <div className="admin-card p-5">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
               <h2 className="text-lg font-bold text-slate-900">
                 Informasi Pemeriksaan
               </h2>
@@ -210,7 +210,7 @@ export default function AdminReportDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Driver */}
               <InfoCard label="Driver">
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <User size={14} className="text-slate-400" />
                   <span>
                     {report.actual_driver_name
@@ -225,7 +225,7 @@ export default function AdminReportDetailPage() {
 
               {/* Vehicle */}
               <InfoCard label="Mobil Operasional">
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <Car size={14} className="text-blue-500" />
                   <span className="font-bold">{report.plate_number}</span>
                   <span className="text-slate-500">({report.brand} {report.model})</span>
@@ -234,7 +234,7 @@ export default function AdminReportDetailPage() {
 
               {/* Location */}
               <InfoCard label="Lokasi Check-In">
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-start gap-2">
                   <MapPin size={14} className="text-red-500" />
                   <span>{report.gps_address || `${report.gps_lat}, ${report.gps_long}` || '—'}</span>
                 </div>
@@ -252,7 +252,7 @@ export default function AdminReportDetailPage() {
 
               {/* Time */}
               <InfoCard label="Waktu Laporan">
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-start gap-2">
                   <Clock size={14} className="text-slate-400" />
                   <span>{formatDateTime(report.created_at || report.check_date)}</span>
                 </div>
@@ -288,7 +288,7 @@ export default function AdminReportDetailPage() {
           {/* Photo grid */}
           {photos.length > 0 && (
             <div className="admin-card p-5">
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-5 bg-blue-600 rounded-full" />
                   <h3 className="font-semibold text-slate-900">Foto Pengecekan MinIO</h3>
@@ -297,7 +297,7 @@ export default function AdminReportDetailPage() {
 
               {/* Main photos grid */}
               {otherPhotos.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                   {otherPhotos.map((photo) => (
                     <PhotoCard key={photo.check_photos_id} photo={photo} onPreview={setSelectedPhoto} />
                   ))}
@@ -312,7 +312,7 @@ export default function AdminReportDetailPage() {
                       🔄 Pengecekan Ban ({banPhotos.length} Sisi)
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
                     {banPhotos.map((photo) => (
                       <PhotoCard key={photo.check_photos_id} photo={photo} onPreview={setSelectedPhoto} />
                     ))}
@@ -334,16 +334,16 @@ export default function AdminReportDetailPage() {
       {/* Photo Lightbox Modal */}
       {selectedPhoto && (
         <div 
-          className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-3 backdrop-blur-sm animate-fade-in sm:p-4"
           onClick={() => setSelectedPhoto(null)}
         >
           <div 
-            className="relative max-w-4xl w-full bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-800 flex flex-col max-h-[90vh]"
+            className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 text-white">
-              <div>
+            <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3 text-white sm:px-5 sm:py-4">
+              <div className="min-w-0">
                 <h4 className="font-bold text-base">
                   {PART_LABELS[selectedPhoto.part_type] || selectedPhoto.part_type}
                 </h4>
@@ -358,7 +358,7 @@ export default function AdminReportDetailPage() {
             </div>
 
             {/* Modal Image Area */}
-            <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-black/50 min-h-[300px]">
+            <div className="flex min-h-[220px] flex-1 items-center justify-center overflow-auto bg-black/50 p-3 sm:min-h-[300px] sm:p-4">
               <img 
                 src={selectedPhoto.url} 
                 alt={selectedPhoto.part_type} 

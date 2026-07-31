@@ -68,9 +68,9 @@ export default function AdminVehiclesPage() {
   });
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="min-w-0 space-y-5 animate-fade-in">
       {/* Header actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-end">
         <div />
         <button
           id="btn-add-vehicle"
@@ -85,11 +85,11 @@ export default function AdminVehiclesPage() {
       {/* Table card */}
       <div className="admin-card overflow-hidden">
         {/* Filter bar */}
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <span className="text-sm text-slate-500">Filter:</span>
             <select
-              className="form-select py-2 w-40"
+              className="form-select py-2 sm:w-40"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -98,7 +98,7 @@ export default function AdminVehiclesPage() {
               <option value="inactive">Nonaktif</option>
             </select>
           </div>
-          <span className="text-sm text-slate-400 ml-auto">
+          <span className="text-sm text-slate-400 sm:ml-auto">
             {!loading && `${filtered.length} kendaraan`}
           </span>
         </div>
@@ -108,7 +108,7 @@ export default function AdminVehiclesPage() {
           <div className="p-5 flex items-center gap-3 bg-red-50 border-b border-red-100">
             <AlertTriangle size={18} className="text-red-500" />
             <p className="text-sm text-red-700">{error}</p>
-            <button onClick={fetchVehicles} className="ml-auto btn-secondary text-xs py-1 px-2">
+            <button onClick={fetchVehicles} className="btn-secondary ml-auto px-2 py-1 text-xs">
               <RefreshCw size={13} /> Coba Lagi
             </button>
           </div>
@@ -116,7 +116,7 @@ export default function AdminVehiclesPage() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="min-w-[780px] w-full">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
                 <th className="th-cell">Plat Nomor</th>

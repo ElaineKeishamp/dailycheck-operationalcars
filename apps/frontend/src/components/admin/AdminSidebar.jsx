@@ -16,17 +16,18 @@ const NAV_ITEMS = [
   { to: '/admin/vehicles', label: 'Manajemen Mobil', icon: Car },
 ];
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ className = '', onNavigate }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    onNavigate?.();
     logout();
     navigate('/login');
   };
 
   return (
-    <aside className="fixed top-0 left-0 h-screen w-[220px] bg-sidebar flex flex-col z-40 select-none">
+    <aside className={`fixed left-0 top-0 z-50 h-screen w-[min(86vw,220px)] flex-col bg-sidebar select-none ${className}`}>
       {/* Logo / Brand */}
       <div className="px-5 py-6 border-b border-white/10">
         {/* Icon */}
@@ -50,6 +51,7 @@ export default function AdminSidebar() {
           <NavLink
             key={to}
             to={to}
+            onClick={onNavigate}
             className={({ isActive }) =>
               `sidebar-nav-item ${isActive ? 'active' : ''}`
             }
@@ -64,6 +66,7 @@ export default function AdminSidebar() {
       <div className="px-3 py-4 border-t border-white/10 space-y-1">
         <NavLink
           to="/admin/profile"
+          onClick={onNavigate}
           className={({ isActive }) =>
             `sidebar-nav-item ${isActive ? 'active' : ''}`
           }

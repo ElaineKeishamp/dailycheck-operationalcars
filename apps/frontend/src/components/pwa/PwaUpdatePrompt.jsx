@@ -35,7 +35,7 @@ export default function PwaUpdatePrompt() {
 
   return (
     <div
-      className="fixed left-4 right-4 top-24 z-40 mx-auto max-w-md rounded-xl border border-blue-100 bg-white p-4 text-slate-900 shadow-card-md"
+      className="fixed left-3 right-3 top-3 z-40 mx-auto max-w-md rounded-xl border border-blue-100 bg-white p-3 text-slate-900 shadow-card-md sm:left-4 sm:right-4 sm:top-24 sm:p-4"
       role="status"
       aria-live="polite"
     >
@@ -44,8 +44,8 @@ export default function PwaUpdatePrompt() {
           <RefreshCw size={20} aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold">Versi baru tersedia</p>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="break-words text-sm font-bold">Versi baru tersedia</p>
+          <p className="mt-1 break-words text-sm text-slate-600">
             Selesaikan proses checking dan pastikan tidak ada foto yang sedang diunggah sebelum memperbarui aplikasi.
           </p>
         </div>
@@ -60,7 +60,7 @@ export default function PwaUpdatePrompt() {
         </button>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <button
           type="button"
           onClick={handleDismiss}

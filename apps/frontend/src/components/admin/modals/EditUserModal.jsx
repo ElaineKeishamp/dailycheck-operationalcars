@@ -148,7 +148,7 @@ export default function EditUserModal({ isOpen, onClose, user, onSuccess }) {
         )}
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}

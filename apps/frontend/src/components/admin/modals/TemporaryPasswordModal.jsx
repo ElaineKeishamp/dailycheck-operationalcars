@@ -74,13 +74,13 @@ export default function TemporaryPasswordModal({
         {/* Password display */}
         <div>
           <p className="text-sm font-medium text-slate-600 mb-2">Password Sementara:</p>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 bg-slate-900 text-green-400 font-mono text-lg font-bold tracking-widest px-5 py-3.5 rounded-xl text-center select-all border border-slate-700">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1 select-all break-all rounded-xl border border-slate-700 bg-slate-900 px-4 py-3.5 text-center font-mono text-base font-bold tracking-widest text-green-400 sm:px-5 sm:text-lg">
               {password || '—'}
             </div>
             <button
               onClick={handleCopy}
-              className={`flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-xl border transition-all duration-200 ${
+              className={`flex h-11 w-full flex-shrink-0 items-center justify-center rounded-xl border transition-all duration-200 sm:w-11 ${
                 copied
                   ? 'bg-green-50 border-green-200 text-green-600'
                   : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700'

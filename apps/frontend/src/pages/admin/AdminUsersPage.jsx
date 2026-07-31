@@ -110,9 +110,9 @@ export default function AdminUsersPage() {
   });
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="min-w-0 space-y-5 animate-fade-in">
       {/* Header actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-end">
         <div />
         <button
           id="btn-add-user"
@@ -127,12 +127,12 @@ export default function AdminUsersPage() {
       {/* Table card */}
       <div className="admin-card overflow-hidden">
         {/* Search + filter bar */}
-        <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-5">
+          <div className="relative min-w-0 sm:w-64">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              className="form-input pl-9 py-2 w-64"
+              className="form-input py-2 pl-9"
               placeholder="Cari nama, email atau NIK..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -140,7 +140,7 @@ export default function AdminUsersPage() {
           </div>
 
           <select
-            className="form-select py-2 w-36"
+            className="form-select py-2 sm:w-36"
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
           >
@@ -150,7 +150,7 @@ export default function AdminUsersPage() {
           </select>
 
           <select
-            className="form-select py-2 w-36"
+            className="form-select py-2 sm:w-36"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
@@ -165,7 +165,7 @@ export default function AdminUsersPage() {
           <div className="p-5 flex items-center gap-3 bg-red-50 border-b border-red-100">
             <AlertTriangle size={18} className="text-red-500" />
             <p className="text-sm text-red-700">{error}</p>
-            <button onClick={fetchUsers} className="ml-auto btn-secondary text-xs py-1 px-2">
+            <button onClick={fetchUsers} className="btn-secondary ml-auto px-2 py-1 text-xs">
               <RefreshCw size={13} /> Coba Lagi
             </button>
           </div>
@@ -173,7 +173,7 @@ export default function AdminUsersPage() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="min-w-[760px] w-full">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
                 <th className="th-cell">User</th>
