@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.*
+npm-debug.log*
+test-db.js
+test-minio.js
+seed-passwords.js
+.git
+.gitignore
+Dockerfile
+.dockerignore
