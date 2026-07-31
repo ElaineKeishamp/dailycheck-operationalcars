@@ -11,7 +11,12 @@ async function findByVehicleAndDate(vehicleId, date = 'CURRENT_DATE') {
 
 async function findByIdAndUser(dailyId, userId) {
   const result = await pool.query(
-    'SELECT * FROM daily_checks WHERE daily_id = $1 AND users_id = $2',
+    `SELECT dc.*, u.name as driver_name, u.email as driver_email,
+            v.plate_number, v.brand, v.model
+     FROM daily_checks dc
+     JOIN users u ON dc.users_id = u.users_id
+     JOIN vehicles v ON dc.vehicle_id = v.vehicle_id
+     WHERE dc.daily_id = $1 AND dc.users_id = $2`,
     [dailyId, userId]
   );
   return result.rows[0] || null;
@@ -26,6 +31,17 @@ async function findById(dailyId) {
      JOIN vehicles v ON dc.vehicle_id = v.vehicle_id
      WHERE dc.daily_id = $1`,
     [dailyId]
+  );
+  return result.rows[0] || null;
+}
+
+async function findActiveByVehicleAndUser(vehicleId, userId) {
+  const result = await pool.query(
+    `SELECT dc.*, v.plate_number, v.brand, v.model
+     FROM daily_checks dc
+     JOIN vehicles v ON dc.vehicle_id = v.vehicle_id
+     WHERE dc.vehicle_id = $1 AND dc.users_id = $2 AND dc.check_date = CURRENT_DATE AND dc.deleted_at IS NULL`,
+    [vehicleId, userId]
   );
   return result.rows[0] || null;
 }
@@ -434,6 +450,7 @@ async function submitDailyCheckWithLock({ daily_id, users_id, getMissingRequired
 
 module.exports = {
   findByVehicleAndDate,
+  findActiveByVehicleAndUser,
   findByIdAndUser,
   findById,
   findTodayCheckByDriver,

@@ -52,9 +52,14 @@ export default defineConfig({
   ],
   server: {
     host: true, // Izinkan akses dari jaringan lokal (HP / Tablet)
+    allowedHosts: true, // Izinkan akses dari tunnel HTTPS (localtunnel / localhost.run)
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/dailycheck-photos': {
+        target: 'http://localhost:9000',
         changeOrigin: true,
       },
     },

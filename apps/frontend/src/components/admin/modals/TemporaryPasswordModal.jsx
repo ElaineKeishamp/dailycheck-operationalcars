@@ -23,12 +23,28 @@ export default function TemporaryPasswordModal({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
+    const textToCopy = password || '';
+    if (!textToCopy) return;
+
     try {
-      await navigator.clipboard.writeText(password || '');
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        // Fallback for HTTP / non-secure contexts
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard not available
+    } catch (err) {
+      console.error('Gagal menyalin:', err);
     }
   };
 
