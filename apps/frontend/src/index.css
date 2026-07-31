@@ -9,6 +9,14 @@
     box-sizing: border-box;
   }
 
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
   body {
     font-family: 'Inter', system-ui, sans-serif;
     background-color: #F8FAFC;
@@ -30,27 +38,27 @@
 
   /* Card styles */
   .admin-card {
-    @apply bg-white rounded-xl border border-slate-100 shadow-card;
+    @apply min-w-0 bg-white rounded-xl border border-slate-100 shadow-card;
   }
 
   /* Primary button */
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover active:scale-95 transition-all duration-200;
+    @apply inline-flex max-w-full items-center justify-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover active:scale-95 transition-all duration-200;
   }
 
   /* Secondary button */
   .btn-secondary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 text-sm font-medium rounded-lg border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all duration-200;
+    @apply inline-flex max-w-full items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 text-sm font-medium rounded-lg border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all duration-200;
   }
 
   /* Danger button */
   .btn-danger {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 active:scale-95 transition-all duration-200;
+    @apply inline-flex max-w-full items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 active:scale-95 transition-all duration-200;
   }
 
   /* Green action button (e.g. "Hubungi") */
   .btn-green {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 active:scale-95 transition-all duration-200;
+    @apply inline-flex max-w-full items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 active:scale-95 transition-all duration-200;
   }
 
   /* Input */

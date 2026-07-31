@@ -89,26 +89,26 @@ export default function AdminReportsPage() {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="min-w-0 space-y-5 animate-fade-in">
       {/* Filters */}
       <div className="admin-card p-5">
-        <div className="flex flex-wrap gap-3 items-end">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           {/* Date */}
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1 sm:w-44">
             <label className="text-xs font-medium text-slate-500">Filter Tanggal</label>
             <input
               type="date"
-              className="form-input w-44"
+              className="form-input"
               value={filters.date}
               onChange={(e) => handleFilterChange('date', e.target.value)}
             />
           </div>
 
           {/* Driver */}
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1 sm:w-44">
             <label className="text-xs font-medium text-slate-500">Driver</label>
             <select
-              className="form-select w-44"
+              className="form-select"
               value={filters.driver_id}
               onChange={(e) => handleFilterChange('driver_id', e.target.value)}
             >
@@ -120,10 +120,10 @@ export default function AdminReportsPage() {
           </div>
 
           {/* Vehicle */}
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1 sm:w-44">
             <label className="text-xs font-medium text-slate-500">Mobil</label>
             <select
-              className="form-select w-44"
+              className="form-select"
               value={filters.vehicle_id}
               onChange={(e) => handleFilterChange('vehicle_id', e.target.value)}
             >
@@ -135,7 +135,7 @@ export default function AdminReportsPage() {
           </div>
 
           {/* Reset */}
-          <button onClick={handleReset} className="btn-secondary h-[42px]">
+          <button onClick={handleReset} className="btn-secondary h-[42px] justify-center sm:justify-start">
             <RefreshCw size={14} />
             Reset Filter
           </button>
@@ -145,8 +145,8 @@ export default function AdminReportsPage() {
       {/* Search + table */}
       <div className="admin-card overflow-hidden">
         {/* Search bar */}
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+          <div className="relative min-w-0 flex-1 sm:max-w-sm">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -166,7 +166,7 @@ export default function AdminReportsPage() {
           <div className="p-5 flex items-center gap-3 bg-red-50 border-b border-red-100">
             <AlertTriangle size={18} className="text-red-500" />
             <p className="text-sm text-red-700">{error}</p>
-            <button onClick={fetchReports} className="ml-auto btn-secondary text-xs py-1 px-2">
+            <button onClick={fetchReports} className="btn-secondary ml-auto px-2 py-1 text-xs">
               <RefreshCw size={13} /> Coba Lagi
             </button>
           </div>
@@ -174,7 +174,7 @@ export default function AdminReportsPage() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="min-w-[720px] w-full">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
                 <th className="th-cell">Tanggal</th>
@@ -235,11 +235,11 @@ export default function AdminReportsPage() {
 
         {/* Pagination */}
         {!loading && totalPages > 1 && (
-          <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
+          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <p className="text-sm text-slate-500">
               Menampilkan {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} dari {filtered.length} Laporan
             </p>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}

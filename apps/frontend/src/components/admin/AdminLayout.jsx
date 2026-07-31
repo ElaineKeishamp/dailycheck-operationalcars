@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
@@ -24,16 +25,58 @@ function getPageMeta(pathname) {
 export default function AdminLayout() {
   const { pathname } = useLocation();
   const { title, subtitle } = getPageMeta(pathname);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileSidebarOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setMobileSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileSidebarOpen]);
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      {/* Fixed sidebar */}
-      <AdminSidebar />
+    <div className="min-h-screen overflow-x-hidden bg-slate-50">
+      <AdminSidebar className="hidden lg:flex" />
 
-      {/* Main content area — offset by sidebar width */}
-      <div className="flex-1 ml-[220px] flex flex-col min-h-screen">
-        <AdminHeader title={title} subtitle={subtitle} />
-        <main className="flex-1 p-6 overflow-auto">
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            aria-label="Tutup menu admin"
+            className="absolute inset-0 bg-slate-950/50"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          <AdminSidebar
+            className="flex shadow-2xl"
+            onNavigate={() => setMobileSidebarOpen(false)}
+          />
+        </div>
+      )}
+
+      <div className="flex min-h-screen min-w-0 flex-col lg:ml-[220px]">
+        <AdminHeader
+          title={title}
+          subtitle={subtitle}
+          onOpenMenu={() => setMobileSidebarOpen(true)}
+        />
+        <main className="min-w-0 flex-1 overflow-x-hidden p-3 sm:p-4 lg:p-6">
           <Outlet />
         </main>
       </div>
