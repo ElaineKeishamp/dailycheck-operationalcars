@@ -1,1 +1,9 @@
 minio.license
+
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+dist-isolation/
+*.log
