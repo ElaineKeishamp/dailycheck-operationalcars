@@ -8,14 +8,6 @@ const INITIAL_FORM = {
   model: '',
 };
 
-/**
- * AddVehicleModal
- * 
- * Props:
- *   isOpen: boolean
- *   onClose: () => void
- *   onSuccess: () => void
- */
 export default function AddVehicleModal({ isOpen, onClose, onSuccess }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [loading, setLoading] = useState(false);
@@ -64,10 +56,8 @@ export default function AddVehicleModal({ isOpen, onClose, onSuccess }) {
       title="Tambah Mobil Baru"
       subtitle="Daftarkan kendaraan operasional baru."
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Plate number */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+      <form onSubmit={handleSubmit} className="space-y-4">        <div>
+          <label htmlFor="add-vehicle-plate" className="block text-sm font-medium text-slate-700 mb-1.5">
             Plat Nomor
           </label>
           <input
@@ -80,11 +70,8 @@ export default function AddVehicleModal({ isOpen, onClose, onSuccess }) {
             required
             autoFocus
           />
-        </div>
-
-        {/* Brand */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+        </div>        <div>
+          <label htmlFor="add-vehicle-brand" className="block text-sm font-medium text-slate-700 mb-1.5">
             Merk Kendaraan
           </label>
           <input
@@ -96,11 +83,8 @@ export default function AddVehicleModal({ isOpen, onClose, onSuccess }) {
             onChange={(e) => handleChange('brand', e.target.value)}
             required
           />
-        </div>
-
-        {/* Model */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+        </div>        <div>
+          <label htmlFor="add-vehicle-model" className="block text-sm font-medium text-slate-700 mb-1.5">
             Model / Tipe
           </label>
           <input
@@ -112,17 +96,11 @@ export default function AddVehicleModal({ isOpen, onClose, onSuccess }) {
             onChange={(e) => handleChange('model', e.target.value)}
             required
           />
-        </div>
-
-        {/* Error */}
-        {error && (
+        </div>        {error && (
           <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-100">
             {error}
           </p>
-        )}
-
-        {/* Actions */}
-        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+        )}        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={handleClose}

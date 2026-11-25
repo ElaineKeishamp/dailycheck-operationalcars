@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const userModel = require('../models/user.model');
+const { createSession } = require('../services/authSession.service');
 
 async function login(req, res) {
   const { email, password } = req.body;
@@ -16,7 +16,7 @@ async function login(req, res) {
       return res.status(401).json({ error: 'Email tidak ditemukan' });
     }
 
-    if (user.status === 'inactive') {
+    if (user.status !== 'active') {
       return res.status(403).json({ error: 'Akun Anda telah dinonaktifkan' });
     }
 
@@ -25,23 +25,7 @@ async function login(req, res) {
       return res.status(401).json({ error: 'Password salah' });
     }
 
-    const token = jwt.sign(
-      { id: user.users_id, role: user.role, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '12h' }
-    );
-
-    res.json({
-      token,
-      user: {
-        id: user.users_id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        is_shared_account: user.is_shared_account,
-        must_change_password: user.must_change_password,
-      },
-    });
+    res.json(createSession(user));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Terjadi kesalahan server' });
@@ -59,6 +43,10 @@ async function changePassword(req, res) {
   try {
     const user = await userModel.findById(userId);
 
+    if (!user || user.status !== 'active' || user.session_version !== req.user.session_version) {
+      return res.status(401).json({ error: 'Sesi tidak berlaku lagi. Silakan login kembali.', code: 'SESSION_EXPIRED' });
+    }
+
     const validOldPassword = await bcrypt.compare(old_password, user.password_hash);
     if (!validOldPassword) {
       return res.status(401).json({ error: 'Password lama salah' });
@@ -66,9 +54,13 @@ async function changePassword(req, res) {
 
     const newHash = await bcrypt.hash(new_password, 10);
 
-    await userModel.updatePassword(userId, newHash, false);
+    const updatedUser = await userModel.updatePassword(userId, newHash, false, req.user.session_version);
 
-    res.json({ message: 'Password berhasil diganti' });
+    if (!updatedUser) {
+      return res.status(401).json({ error: 'Sesi tidak berlaku lagi. Silakan login kembali.', code: 'SESSION_EXPIRED' });
+    }
+
+    res.json({ message: 'Password berhasil diganti', ...createSession(updatedUser) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Terjadi kesalahan server' });

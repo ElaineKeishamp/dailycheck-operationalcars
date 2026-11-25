@@ -1,4 +1,5 @@
 import { CheckCircle2, ClipboardCheck } from 'lucide-react';
+import { formatDateTime } from '../../utils/businessDate';
 
 export default function DailyCheckCompletedStatus({ dailyCheck, selectedVehicle }) {
   const completedAt = dailyCheck?.submitted_at || dailyCheck?.updated_at;
@@ -26,10 +27,7 @@ export default function DailyCheckCompletedStatus({ dailyCheck, selectedVehicle 
           )}
           <p className="mt-2 text-xs text-green-700">
             Status: {dailyCheck?.status || 'submitted'}
-            {completedAt ? ` - ${new Intl.DateTimeFormat('id-ID', {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            }).format(new Date(completedAt))}` : ''}
+            {completedAt ? ` - ${formatDateTime(completedAt)}` : ''}
           </p>
           <p className="mt-2 text-xs text-green-700">
             Laporan telah tersimpan dan tidak dapat diedit dari halaman ini.

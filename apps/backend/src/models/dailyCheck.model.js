@@ -94,7 +94,7 @@ async function createDailyCheck({ users_id, vehicle_id, actual_driver_name, gps_
   const result = await pool.query(
     `INSERT INTO daily_checks (users_id, vehicle_id, actual_driver_name, gps_lat, gps_long, gps_address)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [users_id, vehicle_id, actual_driver_name || null, gps_lat || null, gps_long || null, gps_address || null]
+    [users_id, vehicle_id, actual_driver_name || null, gps_lat ?? null, gps_long ?? null, gps_address || null]
   );
   return result.rows[0];
 }

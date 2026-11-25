@@ -110,9 +110,7 @@ export default function AdminUsersPage() {
   });
 
   return (
-    <div className="min-w-0 space-y-5 animate-fade-in">
-      {/* Header actions */}
-      <div className="flex items-center justify-end">
+    <div className="min-w-0 space-y-5 animate-fade-in">      <div className="flex items-center justify-end">
         <div />
         <button
           id="btn-add-user"
@@ -122,24 +120,21 @@ export default function AdminUsersPage() {
           <UserPlus size={16} />
           Tambah User
         </button>
-      </div>
-
-      {/* Table card */}
-      <div className="admin-card overflow-hidden">
-        {/* Search + filter bar */}
-        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-5">
+      </div>      <div className="admin-card overflow-hidden">        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-5">
           <div className="relative min-w-0 sm:w-64">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               className="form-input py-2 pl-9"
-              placeholder="Cari nama, email atau NIK..."
+              placeholder="Cari nama atau email..."
+              aria-label="Cari pengguna"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
           <select
+            aria-label="Filter role pengguna"
             className="form-select py-2 sm:w-36"
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
@@ -150,6 +145,7 @@ export default function AdminUsersPage() {
           </select>
 
           <select
+            aria-label="Filter status pengguna"
             className="form-select py-2 sm:w-36"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -158,10 +154,7 @@ export default function AdminUsersPage() {
             <option value="active">Aktif</option>
             <option value="inactive">Nonaktif</option>
           </select>
-        </div>
-
-        {/* Error */}
-        {error && (
+        </div>        {error && (
           <div className="p-5 flex items-center gap-3 bg-red-50 border-b border-red-100">
             <AlertTriangle size={18} className="text-red-500" />
             <p className="text-sm text-red-700">{error}</p>
@@ -169,10 +162,7 @@ export default function AdminUsersPage() {
               <RefreshCw size={13} /> Coba Lagi
             </button>
           </div>
-        )}
-
-        {/* Table */}
-        <div className="overflow-x-auto">
+        )}        <div className="overflow-x-auto">
           <table className="min-w-[760px] w-full">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
@@ -209,9 +199,7 @@ export default function AdminUsersPage() {
                   const isProtected = isSelf || isPrimarySuperAdmin;
 
                   return (
-                    <tr key={user.users_id} className="hover:bg-slate-50/50 transition-colors">
-                      {/* User info */}
-                      <td className="td-cell">
+                    <tr key={user.users_id} className="hover:bg-slate-50/50 transition-colors">                      <td className="td-cell">
                         <div className="flex items-center gap-3">
                           <Avatar name={user.name} size="md" />
                           <div>
@@ -236,20 +224,11 @@ export default function AdminUsersPage() {
                             )}
                           </div>
                         </div>
-                      </td>
-
-                      {/* Role */}
-                      <td className="td-cell">
+                      </td>                      <td className="td-cell">
                         <RoleBadge role={user.role} isShared={user.is_shared_account} />
-                      </td>
-
-                      {/* Created at */}
-                      <td className="td-cell text-slate-500">
+                      </td>                      <td className="td-cell text-slate-500">
                         {formatDate(user.created_at)}
-                      </td>
-
-                      {/* Status toggle */}
-                      <td className="td-cell">
+                      </td>                      <td className="td-cell">
                         <div className="flex items-center gap-2">
                           <Toggle
                             checked={user.status === 'active'}
@@ -258,23 +237,15 @@ export default function AdminUsersPage() {
                           />
                           <StatusBadge status={user.status} />
                         </div>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="td-cell">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {/* Edit */}
-                          <button
+                      </td>                      <td className="td-cell">
+                        <div className="flex items-center justify-center gap-1.5">                          <button
                             onClick={() => setEditUser(user)}
                             disabled={isPrimarySuperAdmin}
                             className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                             title={isPrimarySuperAdmin ? "Super Admin tidak dapat diedit" : "Edit user"}
                           >
                             <Edit2 size={15} />
-                          </button>
-
-                        {/* Reset password */}
-                        <button
+                          </button>                        <button
                           onClick={() => handleResetPassword(user)}
                           disabled={resettingId === user.users_id}
                           className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-50"
@@ -294,20 +265,14 @@ export default function AdminUsersPage() {
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Record count */}
-        {!loading && filtered.length > 0 && (
+        </div>        {!loading && filtered.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100">
             <p className="text-xs text-slate-400">
               Menampilkan {filtered.length} dari {users.length} user
             </p>
           </div>
         )}
-      </div>
-
-      {/* Modals */}
-      <AddUserModal
+      </div>      <AddUserModal
         isOpen={addOpen}
         onClose={() => setAddOpen(false)}
         onSuccess={handleAddSuccess}

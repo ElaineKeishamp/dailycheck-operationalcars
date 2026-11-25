@@ -2,17 +2,6 @@ import { Copy, Check, KeyRound } from 'lucide-react';
 import { useState } from 'react';
 import Modal from '../ui/Modal';
 
-/**
- * TemporaryPasswordModal — displays a generated temporary password.
- * Shown after creating a new user OR resetting a user's password.
- * 
- * Props:
- *   isOpen: boolean
- *   onClose: () => void
- *   password: string
- *   userName?: string
- *   mode?: 'create' | 'reset'
- */
 export default function TemporaryPasswordModal({
   isOpen,
   onClose,
@@ -61,18 +50,13 @@ export default function TemporaryPasswordModal({
       subtitle={subtitle}
       maxWidth="max-w-md"
     >
-      <div className="space-y-5">
-        {/* Icon + instruction */}
-        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+      <div className="space-y-5">        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
           <KeyRound size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-amber-800">
             Catat dan sampaikan password sementara ini ke user secara manual (WA/verbal). 
             Password ini <strong>tidak akan ditampilkan lagi</strong> setelah modal ini ditutup.
           </p>
-        </div>
-
-        {/* Password display */}
-        <div>
+        </div>        <div>
           <p className="text-sm font-medium text-slate-600 mb-2">Password Sementara:</p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1 select-all break-all rounded-xl border border-slate-700 bg-slate-900 px-4 py-3.5 text-center font-mono text-base font-bold tracking-widest text-green-400 sm:px-5 sm:text-lg">
@@ -95,10 +79,7 @@ export default function TemporaryPasswordModal({
               ✓ Password disalin ke clipboard
             </p>
           )}
-        </div>
-
-        {/* Close button */}
-        <div className="flex justify-end pt-1">
+        </div>        <div className="flex justify-end pt-1">
           <button onClick={onClose} className="btn-primary">
             Selesai
           </button>

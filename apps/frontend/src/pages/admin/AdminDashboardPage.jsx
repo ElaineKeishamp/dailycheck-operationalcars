@@ -8,14 +8,14 @@ function StatCard({ icon: Icon, iconBg, label, value, badge, loading, sublabel }
   if (loading) return <SkeletonCard />;
 
   return (
-    <div className="admin-card flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
-      <div className={`w-12 h-12 ${iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
+    <div className="admin-card flex min-w-0 items-start justify-between gap-3 p-5 sm:p-6">
+      <div className={`order-2 w-10 h-10 ${iconBg} rounded-lg flex items-center justify-center flex-shrink-0`}>
         <Icon size={22} className="text-current" />
       </div>
       <div className="min-w-0">
         <p className="break-words text-sm font-medium text-slate-500">{label}</p>
-        <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
-          <span className="text-3xl font-bold text-slate-900">{value ?? '—'}</span>
+        <div className="mt-3 flex flex-wrap items-baseline gap-2">
+          <span className="text-4xl font-semibold tracking-tight tabular-nums text-slate-900">{value ?? '—'}</span>
           {badge && (
             <span className="text-xs font-semibold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
               {badge}
@@ -70,9 +70,7 @@ export default function AdminDashboardPage() {
   const belumDrivers = driverStats.belum_checking || [];
 
   return (
-    <div className="min-w-0 space-y-6 animate-fade-in">
-      {/* Error banner */}
-      {error && (
+    <div className="min-w-0 space-y-6 animate-fade-in">      {error && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
           <AlertTriangle size={18} className="text-red-500 flex-shrink-0" />
           <p className="text-sm text-red-700">{error}</p>
@@ -84,10 +82,7 @@ export default function AdminDashboardPage() {
             Coba Lagi
           </button>
         </div>
-      )}
-
-      {/* Vehicle Stats Section */}
-      <div>
+      )}      <div>
         <div className="flex items-center gap-2 mb-3">
           <Car size={18} className="text-blue-600" />
           <h3 className="font-bold text-slate-800 text-base">Status Mobil Operasional Hari Ini</h3>
@@ -103,7 +98,7 @@ export default function AdminDashboardPage() {
           <StatCard
             icon={CheckCircle2}
             iconBg="bg-emerald-50 text-emerald-600"
-            label="Mobil Sudah Checked"
+            label="Mobil Sudah Diperiksa"
             value={vehicleStats.sudah_checking}
             badge={vehicleStats.total > 0 ? `${vehiclePct}%` : null}
             loading={loading}
@@ -111,23 +106,20 @@ export default function AdminDashboardPage() {
           <StatCard
             icon={XCircle}
             iconBg="bg-amber-50 text-amber-600"
-            label="Mobil Belum Checked"
+            label="Mobil Belum Diperiksa"
             value={belumVehicles.length}
             loading={loading}
           />
         </div>
-      </div>
-
-      {/* Driver Stats Section */}
-      <div>
+      </div>      <div>
         <div className="flex items-center gap-2 mb-3">
-          <Users size={18} className="text-purple-600" />
+          <Users size={18} className="text-blue-700" />
           <h3 className="font-bold text-slate-800 text-base">Status Akun Driver Hari Ini</h3>
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <StatCard
             icon={Users}
-            iconBg="bg-purple-50 text-purple-600"
+            iconBg="bg-blue-50 text-blue-700"
             label="Total Akun Driver"
             value={driverStats.total}
             loading={loading}
@@ -135,7 +127,7 @@ export default function AdminDashboardPage() {
           <StatCard
             icon={CheckCircle2}
             iconBg="bg-green-50 text-green-600"
-            label="Driver Sudah Check-in"
+            label="Driver Sudah Checking"
             value={driverStats.sudah_checking}
             badge={driverStats.total > 0 ? `${driverPct}%` : null}
             loading={loading}
@@ -143,24 +135,16 @@ export default function AdminDashboardPage() {
           <StatCard
             icon={AlertTriangle}
             iconBg="bg-red-50 text-red-500"
-            label="Driver Belum Check-in"
+            label="Driver Belum Checking"
             value={belumDrivers.length}
             loading={loading}
           />
         </div>
-      </div>
-
-      {/* Belum checking section with Dual Tab */}
-      <div className="admin-card overflow-hidden">
-        {/* Header with Tab Navigation */}
-        <div className="flex flex-col justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+      </div>      <div className="admin-card overflow-hidden">        <div className="flex flex-col justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
           <div>
             <h2 className="font-bold text-slate-900 text-base">Daftar Belum Checking Hari Ini</h2>
             <p className="text-xs text-slate-400 mt-0.5">Pilih perspektif berdasarkan Mobil Operasional atau Akun Driver</p>
-          </div>
-
-          {/* Tab Switch Buttons */}
-          <div className="grid grid-cols-1 gap-1 rounded-xl bg-slate-100 p-1 sm:flex sm:items-center">
+          </div>          <div className="grid grid-cols-1 gap-1 rounded-xl bg-slate-100 p-1 sm:flex sm:items-center">
             <button
               onClick={() => setActiveTab('vehicle')}
               className={`flex items-center justify-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
@@ -176,7 +160,7 @@ export default function AdminDashboardPage() {
               onClick={() => setActiveTab('driver')}
               className={`flex items-center justify-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
                 activeTab === 'driver'
-                  ? 'bg-white text-purple-600 shadow-sm'
+                  ? 'bg-white text-blue-700 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
@@ -184,10 +168,7 @@ export default function AdminDashboardPage() {
               Berdasarkan Driver ({belumDrivers.length})
             </button>
           </div>
-        </div>
-
-        {/* Tab 1: Vehicle Unchecked List */}
-        {activeTab === 'vehicle' && (
+        </div>        {activeTab === 'vehicle' && (
           <div>
             {loading ? (
               <div className="p-5 space-y-4">
@@ -250,10 +231,7 @@ export default function AdminDashboardPage() {
               </div>
             )}
           </div>
-        )}
-
-        {/* Tab 2: Driver Unchecked List */}
-        {activeTab === 'driver' && (
+        )}        {activeTab === 'driver' && (
           <div>
             {loading ? (
               <div className="p-5 space-y-4">

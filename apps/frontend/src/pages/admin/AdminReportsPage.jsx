@@ -5,13 +5,7 @@ import apiClient from '../../api/client';
 import Avatar from '../../components/admin/ui/Avatar';
 import { StatusBadge } from '../../components/admin/ui/Badge';
 import { SkeletonTable } from '../../components/admin/ui/Skeleton';
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
+import { formatDate } from '../../utils/businessDate';
 
 const PAGE_SIZE = 10;
 
@@ -89,25 +83,20 @@ export default function AdminReportsPage() {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="min-w-0 space-y-5 animate-fade-in">
-      {/* Filters */}
-      <div className="admin-card p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          {/* Date */}
-          <div className="flex min-w-0 flex-col gap-1 sm:w-44">
-            <label className="text-xs font-medium text-slate-500">Filter Tanggal</label>
+    <div className="min-w-0 space-y-5 animate-fade-in">      <div className="admin-card p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">          <div className="flex min-w-0 flex-col gap-1 sm:w-44">
+            <label htmlFor="report-date" className="text-xs font-medium text-slate-500">Filter Tanggal</label>
             <input
               type="date"
+              id="report-date"
               className="form-input"
               value={filters.date}
               onChange={(e) => handleFilterChange('date', e.target.value)}
             />
-          </div>
-
-          {/* Driver */}
-          <div className="flex min-w-0 flex-col gap-1 sm:w-44">
-            <label className="text-xs font-medium text-slate-500">Driver</label>
+          </div>          <div className="flex min-w-0 flex-col gap-1 sm:w-44">
+            <label htmlFor="report-driver" className="text-xs font-medium text-slate-500">Driver</label>
             <select
+              id="report-driver"
               className="form-select"
               value={filters.driver_id}
               onChange={(e) => handleFilterChange('driver_id', e.target.value)}
@@ -117,12 +106,10 @@ export default function AdminReportsPage() {
                 <option key={d.users_id} value={d.users_id}>{d.name}</option>
               ))}
             </select>
-          </div>
-
-          {/* Vehicle */}
-          <div className="flex min-w-0 flex-col gap-1 sm:w-44">
-            <label className="text-xs font-medium text-slate-500">Mobil</label>
+          </div>          <div className="flex min-w-0 flex-col gap-1 sm:w-44">
+            <label htmlFor="report-vehicle" className="text-xs font-medium text-slate-500">Mobil</label>
             <select
+              id="report-vehicle"
               className="form-select"
               value={filters.vehicle_id}
               onChange={(e) => handleFilterChange('vehicle_id', e.target.value)}
@@ -132,26 +119,19 @@ export default function AdminReportsPage() {
                 <option key={v.vehicle_id} value={v.vehicle_id}>{v.plate_number} – {v.brand}</option>
               ))}
             </select>
-          </div>
-
-          {/* Reset */}
-          <button onClick={handleReset} className="btn-secondary h-[42px] justify-center sm:justify-start">
+          </div>          <button onClick={handleReset} className="btn-secondary h-[42px] justify-center sm:justify-start">
             <RefreshCw size={14} />
             Reset Filter
           </button>
         </div>
-      </div>
-
-      {/* Search + table */}
-      <div className="admin-card overflow-hidden">
-        {/* Search bar */}
-        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+      </div>      <div className="admin-card overflow-hidden">        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
           <div className="relative min-w-0 flex-1 sm:max-w-sm">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               className="form-input pl-9 py-2"
               placeholder="Cari nama driver atau plat nomor..."
+              aria-label="Cari laporan"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
@@ -159,10 +139,7 @@ export default function AdminReportsPage() {
           <span className="text-sm text-slate-400">
             {!loading && `${filtered.length} laporan`}
           </span>
-        </div>
-
-        {/* Error */}
-        {error && (
+        </div>        {error && (
           <div className="p-5 flex items-center gap-3 bg-red-50 border-b border-red-100">
             <AlertTriangle size={18} className="text-red-500" />
             <p className="text-sm text-red-700">{error}</p>
@@ -170,10 +147,7 @@ export default function AdminReportsPage() {
               <RefreshCw size={13} /> Coba Lagi
             </button>
           </div>
-        )}
-
-        {/* Table */}
-        <div className="overflow-x-auto">
+        )}        <div className="overflow-x-auto">
           <table className="min-w-[720px] w-full">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
@@ -231,10 +205,7 @@ export default function AdminReportsPage() {
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        {!loading && totalPages > 1 && (
+        </div>        {!loading && totalPages > 1 && (
           <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <p className="text-sm text-slate-500">
               Menampilkan {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} dari {filtered.length} Laporan

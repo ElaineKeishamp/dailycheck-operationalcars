@@ -11,14 +11,6 @@ const INITIAL_FORM = {
   is_shared_account: false,
 };
 
-/**
- * AddUserModal
- * 
- * Props:
- *   isOpen: boolean
- *   onClose: () => void
- *   onSuccess: (temporaryPassword: string) => void
- */
 export default function AddUserModal({ isOpen, onClose, onSuccess }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [loading, setLoading] = useState(false);
@@ -67,10 +59,8 @@ export default function AddUserModal({ isOpen, onClose, onSuccess }) {
       title="Tambah User Baru"
       subtitle="Lengkapi informasi untuk mendaftarkan user."
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Name */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+      <form onSubmit={handleSubmit} className="space-y-4">        <div>
+          <label htmlFor="add-user-name" className="block text-sm font-medium text-slate-700 mb-1.5">
             Nama Lengkap
           </label>
           <input
@@ -83,11 +73,8 @@ export default function AddUserModal({ isOpen, onClose, onSuccess }) {
             required
             autoFocus
           />
-        </div>
-
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+        </div>        <div>
+          <label htmlFor="add-user-email" className="block text-sm font-medium text-slate-700 mb-1.5">
             Email Perusahaan
           </label>
           <input
@@ -99,11 +86,8 @@ export default function AddUserModal({ isOpen, onClose, onSuccess }) {
             onChange={(e) => handleChange('email', e.target.value)}
             required
           />
-        </div>
-
-        {/* Role */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+        </div>        <div>
+          <label htmlFor="add-user-role" className="block text-sm font-medium text-slate-700 mb-1.5">
             Role Akses
           </label>
           <select
@@ -115,10 +99,7 @@ export default function AddUserModal({ isOpen, onClose, onSuccess }) {
             <option value="driver">Driver Utama</option>
             <option value="admin">Admin</option>
           </select>
-        </div>
-
-        {/* Shared Account toggle */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+        </div>        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
           <Toggle
             checked={form.is_shared_account}
             onChange={(val) => handleChange('is_shared_account', val)}
@@ -128,17 +109,11 @@ export default function AddUserModal({ isOpen, onClose, onSuccess }) {
           <div className="flex items-center gap-2 mt-3 -ml-0.5">
             <Users size={16} className="text-slate-400" />
           </div>
-        </div>
-
-        {/* Error */}
-        {error && (
+        </div>        {error && (
           <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-100">
             {error}
           </p>
-        )}
-
-        {/* Actions */}
-        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+        )}        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={handleClose}
@@ -149,7 +124,7 @@ export default function AddUserModal({ isOpen, onClose, onSuccess }) {
           </button>
           <button
             type="submit"
-            className="btn-primary bg-slate-900 hover:bg-slate-800"
+            className="btn-primary"
             disabled={loading}
           >
             {loading ? (

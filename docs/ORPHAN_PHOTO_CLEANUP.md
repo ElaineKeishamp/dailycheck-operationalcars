@@ -1,5 +1,8 @@
 # Orphan Photo Cleanup
 
+> Dokumen riwayat. Isinya mencatat pemeriksaan atau rancangan pada saat ditulis.
+> Status dan persiapan deployment terbaru ada di [catatan serah terima](HANDOVER.md).
+
 Orphan photo objects can occur when the browser successfully uploads a file to MinIO with a presigned PUT URL, but the follow-up backend confirmation request never creates a `check_photos` row. The Driver UI can retry confirmation while the upload ticket is valid, but a browser may close permanently before that happens.
 
 Use the backend maintenance script to inspect stale unconfirmed objects:

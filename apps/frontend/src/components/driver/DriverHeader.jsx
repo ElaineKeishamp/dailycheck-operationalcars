@@ -1,19 +1,19 @@
-import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, LogOut, UserCircle } from 'lucide-react';
+import { CalendarDays, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
+import { BUSINESS_TIME_ZONE } from '../../utils/businessDate';
+import BrandLogo from '../BrandLogo';
 
 export default function DriverHeader() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const todayLabel = useMemo(() => {
-    return new Intl.DateTimeFormat('id-ID', {
+  const todayLabel = new Intl.DateTimeFormat('id-ID', {
+      timeZone: BUSINESS_TIME_ZONE,
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     }).format(new Date());
-  }, []);
 
   const handleLogout = () => {
     logout();
@@ -21,30 +21,29 @@ export default function DriverHeader() {
   };
 
   return (
-    <header className="bg-white border border-slate-100 rounded-xl shadow-card p-4">
+    <header className="rounded-2xl bg-sidebar p-5 text-white sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-11 h-11 rounded-full bg-blue-100 text-primary flex items-center justify-center flex-shrink-0">
-            <UserCircle size={25} aria-hidden="true" />
-          </div>
+          <BrandLogo className="w-20" />
           <div className="min-w-0">
-            <p className="text-xs font-medium text-slate-500">Driver</p>
-            <h1 className="text-lg font-bold text-slate-900 truncate">{user?.name || 'Driver'}</h1>
+            <p className="text-xs font-medium text-blue-100">Daily Check · Driver</p>
+            <h1 className="text-xl font-bold text-white truncate">{user?.name || 'Driver'}</h1>
           </div>
         </div>
 
         <button
           type="button"
           onClick={handleLogout}
-          className="w-11 h-11 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 inline-flex items-center justify-center transition-colors flex-shrink-0"
+          className="min-h-11 rounded-lg border border-blue-200/50 px-3 text-white hover:bg-white/10 inline-flex gap-2 items-center justify-center transition-colors flex-shrink-0"
           aria-label="Logout dari akun driver"
         >
           <LogOut size={19} aria-hidden="true" />
+          <span className="hidden text-sm font-medium sm:inline">Keluar</span>
         </button>
       </div>
 
-      <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
-        <CalendarDays size={17} className="text-primary flex-shrink-0" aria-hidden="true" />
+      <div className="mt-5 flex items-center gap-2 border-t border-white/15 pt-4 text-sm text-blue-100">
+        <CalendarDays size={17} className="flex-shrink-0" aria-hidden="true" />
         <span>{todayLabel}</span>
       </div>
     </header>

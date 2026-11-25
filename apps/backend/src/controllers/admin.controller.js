@@ -17,7 +17,10 @@ async function resetPassword(req, res) {
     const tempPassword = crypto.randomBytes(4).toString('hex');
     const hash = await bcrypt.hash(tempPassword, 10);
 
-    await userModel.updatePassword(id, hash, true);
+    const updatedUser = await userModel.updatePassword(id, hash, true);
+    if (!updatedUser) {
+      return res.status(404).json({ error: 'User tidak ditemukan' });
+    }
 
     res.json({
       message: 'Password berhasil direset',
@@ -34,8 +37,7 @@ async function getAllReports(req, res) {
 
   try {
     const reports = await dailyCheckModel.getAllReports({ date, status: null });
-    
-    // Filter if driver_id or vehicle_id requested
+
     let filtered = reports;
     if (driver_id) {
       filtered = filtered.filter(r => r.users_id === driver_id);
@@ -92,14 +94,20 @@ async function getReportDetail(req, res) {
 async function getTodayStatus(req, res) {
   try {
     const allDrivers = await userModel.getActiveDrivers();
-    const checkedUserIds = await dailyCheckModel.getCheckedTodayUserIds();
+    const submittedUserIds = new Set(await dailyCheckModel.getCheckedTodayUserIds());
+    const checkedUserIds = allDrivers
+      .filter(driver => submittedUserIds.has(driver.users_id))
+      .map(driver => driver.users_id);
     const notCheckedDrivers = allDrivers.filter(
       driver => !checkedUserIds.includes(driver.users_id)
     );
 
     const allVehicles = await vehicleModel.getAllVehicles();
     const activeVehicles = allVehicles.filter(v => v.status === 'active');
-    const checkedVehicleIds = await dailyCheckModel.getCheckedTodayVehicleIds();
+    const submittedVehicleIds = new Set(await dailyCheckModel.getCheckedTodayVehicleIds());
+    const checkedVehicleIds = activeVehicles
+      .filter(vehicle => submittedVehicleIds.has(vehicle.vehicle_id))
+      .map(vehicle => vehicle.vehicle_id);
     const notCheckedVehicles = activeVehicles.filter(
       v => !checkedVehicleIds.includes(v.vehicle_id)
     );
@@ -158,6 +166,9 @@ async function createUser(req, res) {
       temporary_password: tempPassword,
     });
   } catch (err) {
+    if (err.code === '23505' && err.constraint === 'users_email_key') {
+      return res.status(409).json({ error: 'Email sudah terdaftar' });
+    }
     console.error(err);
     res.status(500).json({ error: 'Terjadi kesalahan server' });
   }
@@ -204,9 +215,15 @@ async function updateUser(req, res) {
     }
 
     const updatedUser = await userModel.updateUser(id, {
-      role: role || existing.role,
-      status: status || existing.status,
+      name,
+      role,
+      status,
+      is_shared_account,
     });
+
+    if (!updatedUser) {
+      return res.status(400).json({ error: 'Tidak ada perubahan akun yang dapat disimpan' });
+    }
 
     res.json({ user: updatedUser });
   } catch (err) {
@@ -232,6 +249,9 @@ async function createVehicle(req, res) {
 
     res.status(201).json({ vehicle });
   } catch (err) {
+    if (err.code === '23505' && err.constraint === 'vehicles_plate_number_key') {
+      return res.status(409).json({ error: 'Plat nomor sudah terdaftar' });
+    }
     console.error(err);
     res.status(500).json({ error: 'Terjadi kesalahan server' });
   }

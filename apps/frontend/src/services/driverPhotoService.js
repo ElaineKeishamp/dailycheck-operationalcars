@@ -103,7 +103,7 @@ export async function uploadPhotoToPresignedUrl({ uploadUrl, blob, contentType, 
   }
 
   if (!response.ok) {
-    throw withCode(new Error('MinIO upload gagal'), UPLOAD_STORAGE_FAILED);
+    throw withCode(new Error('Upload foto ke penyimpanan gagal'), UPLOAD_STORAGE_FAILED);
   }
 }
 

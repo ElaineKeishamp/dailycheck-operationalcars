@@ -1,25 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middlewares/auth');
+const { verifyPasswordChangeToken } = require('../middlewares/auth');
 const { login, changePassword } = require('../controllers/auth.controller');
 const { body } = require('express-validator');
 const validate = require('../middlewares/validate');
+const { createLoginRateLimiter } = require('../middlewares/loginRateLimit');
 
 router.post(
 	'/login',
+	createLoginRateLimiter(),
 	[
-		body('email').isEmail().withMessage('Email tidak valid'),
-		body('password').notEmpty().withMessage('Password wajib diisi'),
+		body('email').isString().bail().trim().isEmail().withMessage('Email tidak valid').isLength({ max: 100 }),
+		body('password').isString().bail().notEmpty().withMessage('Password wajib diisi'),
 		validate,
 	],
 	login
 );
 router.post(
 	'/change-password',
-	verifyToken,
+	verifyPasswordChangeToken,
 	[
-		body('old_password').notEmpty().withMessage('Password lama wajib diisi'),
-		body('new_password').isLength({ min: 6 }).withMessage('Password baru minimal 6 karakter'),
+		body('old_password').isString().bail().notEmpty().withMessage('Password lama wajib diisi'),
+		body('new_password').isString().bail().isLength({ min: 6 }).withMessage('Password baru minimal 6 karakter'),
 		validate,
 	],
 	changePassword

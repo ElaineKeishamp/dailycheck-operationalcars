@@ -1,5 +1,8 @@
 # Photo Replacement PR Checklist
 
+> Dokumen riwayat. Isinya mencatat pemeriksaan atau rancangan pada saat ditulis.
+> Status dan persiapan deployment terbaru ada di [catatan serah terima](HANDOVER.md).
+
 Status values: Passed, Failed, Not executed.
 
 ## Branch And Merge Readiness

@@ -1,5 +1,8 @@
 # Photo Upload Recovery PR Checklist
 
+> Dokumen riwayat. Isinya mencatat pemeriksaan atau rancangan pada saat ditulis.
+> Status dan persiapan deployment terbaru ada di [catatan serah terima](HANDOVER.md).
+
 Status values are limited to `Passed`, `Failed`, and `Not executed`.
 
 | Check | Status | Notes |

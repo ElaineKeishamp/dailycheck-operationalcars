@@ -2,7 +2,6 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { getAuthenticatedHomePath } from '../utils/authRoutes';
 
-// Spinner shown while auth is being restored from localStorage
 function LoadingSpinner() {
   return (
     <div
@@ -16,10 +15,6 @@ function LoadingSpinner() {
   );
 }
 
-/**
- * ProtectedRoute: requires the user to be authenticated.
- * Redirects to /login if not logged in.
- */
 export function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -30,10 +25,6 @@ export function ProtectedRoute({ children }) {
   return children;
 }
 
-/**
- * AdminRoute: requires the user to be authenticated AND have role 'admin'.
- * Redirects to /login if not authenticated, or /access-denied if not admin.
- */
 export function AdminRoute({ children }) {
   const { user, loading } = useAuth();
 

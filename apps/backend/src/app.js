@@ -3,6 +3,8 @@ const cors = require('cors');
 const pool = require('./config/db');
 const app = express();
 
+app.set('trust proxy', process.env.TRUST_PROXY?.trim() || false);
+
 app.use(cors());
 app.use(express.json());
 
@@ -29,7 +31,6 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
-//end point 
 app.get('/', (req, res) => {
     res.json({message: 'Daily Check API is running'});
 });

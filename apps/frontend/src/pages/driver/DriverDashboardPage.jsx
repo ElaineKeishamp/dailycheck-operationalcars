@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, History, Calendar } from 'lucide-react';
 import ActiveDailyCheckStatus from '../../components/driver/ActiveDailyCheckStatus';
 import CameraCaptureOverlay from '../../components/driver/CameraCaptureOverlay';
@@ -15,26 +15,14 @@ import VehicleSelectionCard from '../../components/driver/VehicleSelectionCard';
 import { getChecklistLabel, STANDARD_PHOTO_ITEMS, TIRE_CHECKLIST_ITEMS } from '../../config/driverChecklist';
 import { useAuth } from '../../context/useAuth';
 import { useDailyCheckSession } from '../../hooks/useDailyCheckSession';
+import { useDriverOverview } from '../../hooks/useDriverOverview';
 import { useDriverVehicles } from '../../hooks/useDriverVehicles';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { usePhotoChecklistDrafts } from '../../hooks/usePhotoChecklistDrafts';
 import { usePhotoUploads } from '../../hooks/usePhotoUploads';
 import { canStartDriverChecking } from '../../utils/driverPreparation';
-import apiClient from '../../api/client';
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function formatTime(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${pad(d.getHours())}:${pad(d.getMinutes())} WIB`;
-}
+import { formatDate, formatTime } from '../../utils/businessDate';
 
 export default function DriverDashboardPage() {
   const { user } = useAuth();
@@ -54,9 +42,7 @@ export default function DriverDashboardPage() {
 
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const [actualDriverName, setActualDriverName] = useState('');
-  const [history, setHistory] = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [todayCompletedCheck, setTodayCompletedCheck] = useState(null);
+  const { history, historyLoading, historyError, todayCompletedCheck, todayStatus, reload: fetchHistoryAndToday } = useDriverOverview();
 
   const {
     dailyCheck,
@@ -103,28 +89,6 @@ export default function DriverDashboardPage() {
   const isSessionActive = sessionStatus === 'active' && Boolean(dailyCheck);
   const isSessionVisible = ['active', 'submitting', 'completed'].includes(sessionStatus) && Boolean(dailyCheck);
 
-  const fetchHistoryAndToday = useCallback(async () => {
-    setHistoryLoading(true);
-    try {
-      const [histRes, todayRes] = await Promise.all([
-        apiClient.get('/daily-checks/my-history').catch(() => ({ data: { reports: [] } })),
-        apiClient.get('/daily-checks/my-today').catch(() => ({ data: { daily_check: null } })),
-      ]);
-      setHistory(histRes.data.reports || []);
-      if (todayRes.data.daily_check && todayRes.data.daily_check.status === 'submitted') {
-        setTodayCompletedCheck(todayRes.data.daily_check);
-      }
-    } catch {
-      // Ignore fallback
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchHistoryAndToday();
-  }, [fetchHistoryAndToday]);
-
   const validChecklistIds = useMemo(() => new Set([
     ...STANDARD_PHOTO_ITEMS.map((item) => item.id),
     ...TIRE_CHECKLIST_ITEMS.map((item) => item.id),
@@ -135,7 +99,7 @@ export default function DriverDashboardPage() {
     return vehicles.find((vehicle) => vehicle.vehicle_id === selectedVehicleId) || null;
   }, [selectedVehicleId, vehicles]);
 
-  const canStartChecking = isOnline && canStartDriverChecking({
+  const canStartChecking = isOnline && todayStatus === 'success' && canStartDriverChecking({
     selectedVehicleId,
     selectedVehicle,
     isSharedAccount,
@@ -420,13 +384,24 @@ export default function DriverDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <main className="mx-auto w-full max-w-2xl px-4 py-4 sm:py-6">
+    <div className="driver-workspace min-h-screen bg-[#F3F6FB]">
+      <main className="mx-auto w-full max-w-2xl px-4 py-4 sm:py-8">
         <div className="space-y-4 pb-4">
           <DriverHeader />
 
-          {/* Post-Checking Completed Banner */}
-          {todayCompletedCheck && !isSessionVisible && (
+          {todayStatus === 'error' && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
+              <p className="text-sm text-red-700">Gagal memeriksa laporan hari ini. Coba lagi sebelum memulai checking.</p>
+              <button
+                type="button"
+                onClick={fetchHistoryAndToday}
+                disabled={!isOnline}
+                className="mt-3 min-h-11 cursor-pointer rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800 active:bg-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Coba Lagi
+              </button>
+            </div>
+          )}          {todayCompletedCheck && !isSessionVisible && (
             <div className="bg-emerald-600 text-white rounded-xl p-5 shadow-lg flex items-start gap-4">
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
                 <CheckCircle2 size={26} className="text-white" />
@@ -599,17 +574,26 @@ export default function DriverDashboardPage() {
                 })}
               />
             </>
-          )}
-
-          {/* 7-Day Checking History Section */}
-          <section className="bg-white border border-slate-100 rounded-xl shadow-card p-4 mt-6">
+          )}          <section className="bg-white border border-slate-100 rounded-xl shadow-card p-4 mt-6">
             <div className="flex items-center gap-2 mb-3">
               <History size={18} className="text-blue-600" />
               <h3 className="font-bold text-slate-900 text-sm">Riwayat Pengecekan 7 Hari Terakhir</h3>
             </div>
 
             {historyLoading ? (
-              <div className="p-4 text-center text-xs text-slate-400">Memuat riwayat pengecekan...</div>
+              <div className="p-4 text-center text-xs text-slate-600" role="status">Memuat riwayat pengecekan...</div>
+            ) : historyError ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
+                <p className="text-sm text-red-700">{historyError}</p>
+                <button
+                  type="button"
+                  onClick={fetchHistoryAndToday}
+                  disabled={!isOnline}
+                  className="mt-3 min-h-11 cursor-pointer rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800 active:bg-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Muat Ulang Riwayat
+                </button>
+              </div>
             ) : history.length === 0 ? (
               <div className="p-6 text-center text-slate-400 flex flex-col items-center gap-2">
                 <Calendar size={28} className="text-slate-300" />

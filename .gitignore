@@ -1,1 +1,21 @@
 minio.license
+
+# Data dan konfigurasi lokal.
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+.validation*/
+
+# Pengaturan alat bantu lokal dan paket hasil ekspor.
+.agents/
+.codex/
+.claude/
+antislop/
+anti-slop/
+anti_slop/
+anti-ai-slop/
+.antislop/
+*.zip

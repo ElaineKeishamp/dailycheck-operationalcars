@@ -5,14 +5,12 @@ import OfflineNotice from './components/pwa/OfflineNotice';
 import PwaInstallPrompt from './components/pwa/PwaInstallPrompt';
 import PwaUpdatePrompt from './components/pwa/PwaUpdatePrompt';
 
-// Pages
 import LoginPage from './pages/LoginPage';
 import AccessDeniedPage from './pages/AccessDeniedPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import DriverDashboardPage from './pages/driver/DriverDashboardPage';
 
-// Admin layout + pages
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';

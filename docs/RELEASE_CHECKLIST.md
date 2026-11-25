@@ -1,5 +1,8 @@
 # Release Checklist
 
+> Dokumen riwayat. Isinya mencatat pemeriksaan atau rancangan pada saat ditulis.
+> Status dan persiapan deployment terbaru ada di [catatan serah terima](HANDOVER.md).
+
 Review date: 2026-07-30
 
 Status values: `Passed`, `Failed`, `Not executed`, `Accepted risk`.

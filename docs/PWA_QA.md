@@ -1,5 +1,8 @@
 # PWA QA Checklist
 
+> Dokumen riwayat. Isinya mencatat pemeriksaan atau rancangan pada saat ditulis.
+> Status dan persiapan deployment terbaru ada di [catatan serah terima](HANDOVER.md).
+
 Use production preview for this checklist unless a step explicitly says otherwise. Mark each item as Passed, Failed, or Not executed during a QA pass.
 
 ## Phase 10A Observations

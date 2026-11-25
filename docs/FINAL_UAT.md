@@ -1,5 +1,8 @@
 # Final UAT Matrix
 
+> Dokumen riwayat. Isinya mencatat pemeriksaan atau rancangan pada saat ditulis.
+> Status dan persiapan deployment terbaru ada di [catatan serah terima](HANDOVER.md).
+
 Environment: local Windows workspace on `chore/final-qa-stabilization`, PostgreSQL local database, local MinIO, production frontend build and preview HTTP checks. Browser-controlled UAT was not available in this pass, so browser-only scenarios are marked `Not executed`.
 
 Status values: `Passed`, `Failed`, `Not executed`.

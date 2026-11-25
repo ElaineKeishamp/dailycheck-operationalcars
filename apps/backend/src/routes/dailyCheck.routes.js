@@ -25,9 +25,11 @@ router.post(
 	verifyToken,
 	requireDriver,
 	[
-		body('vehicle_id').notEmpty().withMessage('vehicle_id wajib diisi'),
-		body('gps_lat').optional().isFloat().withMessage('gps_lat harus angka'),
-		body('gps_long').optional().isFloat().withMessage('gps_long harus angka'),
+		body('vehicle_id').isString().bail().isUUID().withMessage('vehicle_id tidak valid'),
+		body('gps_lat').optional().custom(value => typeof value === 'number' && Number.isFinite(value) && value >= -90 && value <= 90).withMessage('gps_lat harus angka antara -90 dan 90'),
+		body('gps_long').optional().custom(value => typeof value === 'number' && Number.isFinite(value) && value >= -180 && value <= 180).withMessage('gps_long harus angka antara -180 dan 180'),
+		body('actual_driver_name').optional().isString().bail().trim().isLength({ max: 100 }),
+		body('gps_address').optional().isString(),
 		validate,
 	],
 	startDailyCheck
@@ -38,7 +40,7 @@ router.get(
 	verifyToken,
 	requireDriver,
 	[
-		query('vehicle_id').notEmpty().withMessage('vehicle_id wajib diisi'),
+		query('vehicle_id').isString().bail().isUUID().withMessage('vehicle_id tidak valid'),
 		validate,
 	],
 	getActiveDailyCheck
@@ -47,13 +49,12 @@ router.get(
 router.get('/my-today', verifyToken, requireDriver, getMyTodayCheck);
 router.get('/my-history', verifyToken, requireDriver, getMyHistory);
 
-// Minta Presigned Upload URL ke MinIO
 router.post(
 	'/:dailyCheckId/photo-url',
 	verifyToken,
 	requireDriver,
 	[
-		param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'),
+		param('dailyCheckId').isUUID().withMessage('dailyCheckId tidak valid'),
 		body('part_type').notEmpty().isIn(VALID_PART_TYPES).withMessage('part_type tidak valid'),
 		body('part_index').optional({ nullable: true }).isInt({ min: 1, max: 4 }).withMessage('part_index harus 1 sampai 4'),
 		body('content_type').optional().isIn(['image/jpeg', 'image/png', 'image/webp']).withMessage('content_type tidak valid'),
@@ -62,7 +63,6 @@ router.post(
 	getPhotoUploadUrl
 );
 
-// Konfirmasi Simpan Record Foto ke PostgreSQL setelah Upload MinIO selesai
 router.post(
 	'/:dailyCheckId/photos',
 	verifyToken,
@@ -92,7 +92,7 @@ router.get(
 	'/:dailyCheckId/photos',
 	verifyToken,
 	requireDriver,
-	[param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'), validate],
+	[param('dailyCheckId').isUUID().withMessage('dailyCheckId tidak valid'), validate],
 	getDailyCheckPhotos
 );
 
@@ -108,6 +108,6 @@ router.delete(
 	deleteDailyCheckPhoto
 );
 
-router.post('/:dailyCheckId/submit', verifyToken, requireDriver, [param('dailyCheckId').notEmpty().withMessage('dailyCheckId wajib diisi'), validate], submitDailyCheck);
+router.post('/:dailyCheckId/submit', verifyToken, requireDriver, [param('dailyCheckId').isUUID().withMessage('dailyCheckId tidak valid'), validate], submitDailyCheck);
 
 module.exports = router;

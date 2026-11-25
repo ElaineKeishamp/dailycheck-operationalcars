@@ -4,10 +4,10 @@ import {
   FileText,
   Users,
   Car,
-  UserCircle,
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
+import BrandLogo from '../BrandLogo';
 
 const NAV_ITEMS = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -28,25 +28,11 @@ export default function AdminSidebar({ className = '', onNavigate }) {
 
   return (
     <aside className={`fixed left-0 top-0 z-50 h-screen w-[min(86vw,220px)] flex-col bg-sidebar select-none ${className}`}>
-      {/* Logo / Brand */}
-      <div className="px-5 py-6 border-b border-white/10">
-        {/* Icon */}
-        <div className="flex items-center gap-2.5 mb-1">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-            <Car size={16} className="text-white" />
-          </div>
-          <span className="text-white font-bold text-base leading-tight">
-            Lintasarta
-          </span>
-        </div>
-        <div className="pl-10">
-          <p className="text-white font-semibold text-sm leading-tight">Daily Check</p>
-          <p className="text-slate-400 text-xs">Operational Cars</p>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
+      <div className="px-5 py-8 border-b border-white/15">
+        <BrandLogo className="w-28" />
+        <p className="mt-2 text-sm font-semibold text-white">Lintasarta</p>
+        <p className="mt-1 text-xs text-blue-100">Operational Cars</p>
+      </div>      <nav aria-label="Menu utama admin" className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -60,20 +46,7 @@ export default function AdminSidebar({ className = '', onNavigate }) {
             <span>{label}</span>
           </NavLink>
         ))}
-      </nav>
-
-      {/* Bottom actions */}
-      <div className="px-3 py-4 border-t border-white/10 space-y-1">
-        <NavLink
-          to="/admin/profile"
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            `sidebar-nav-item ${isActive ? 'active' : ''}`
-          }
-        >
-          <UserCircle size={18} className="flex-shrink-0" />
-          <span>Profil Admin</span>
-        </NavLink>
+      </nav>      <div className="px-3 py-4 border-t border-white/10 space-y-1">
         <button
           onClick={handleLogout}
           className="sidebar-nav-item w-full text-left text-red-400 hover:text-red-300 hover:bg-red-900/20"

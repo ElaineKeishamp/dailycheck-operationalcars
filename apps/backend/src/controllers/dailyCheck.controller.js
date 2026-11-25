@@ -3,6 +3,7 @@ const vehicleModel = require('../models/vehicle.model');
 const dailyCheckModel = require('../models/dailyCheck.model');
 const storageService = require('../services/storage.service');
 const jwt = require('jsonwebtoken');
+const { DATABASE_TIME_ZONE } = require('../config/databaseTime');
 
 const VALID_PART_TYPES = ['odo', 'body_kiri', 'body_kanan', 'kap', 'depan', 'belakang', 'interior', 'ban', 'lainnya'];
 const VALID_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -61,9 +62,12 @@ function slugify(text) {
 
 function getPhotoKeyPrefix(dailyCheck, reqUser) {
   const dateObj = dailyCheck?.created_at ? new Date(dailyCheck.created_at) : new Date();
-  const YYYY = dateObj.getFullYear();
-  const MM = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const DD = String(dateObj.getDate()).padStart(2, '0');
+  const dateParts = new Intl.DateTimeFormat('en', {
+    timeZone: DATABASE_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(dateObj);
+  const YYYY = dateParts.find(part => part.type === 'year').value;
+  const MM = dateParts.find(part => part.type === 'month').value;
+  const DD = dateParts.find(part => part.type === 'day').value;
 
   const rawDriverName = dailyCheck?.actual_driver_name || dailyCheck?.driver_name || reqUser?.name || 'driver';
   const driverFolder = slugify(rawDriverName) || 'driver';
@@ -214,6 +218,9 @@ async function startDailyCheck(req, res) {
 
     res.status(201).json({ daily_check: dailyCheck });
   } catch (err) {
+    if (err.code === '23505' && err.constraint === 'unique_vehicle_perday') {
+      return res.status(409).json({ error: 'Mobil ini sudah di-checking hari ini' });
+    }
     console.error(err);
     res.status(500).json({ error: 'Terjadi kesalahan server' });
   }
@@ -235,9 +242,6 @@ async function getActiveDailyCheck(req, res) {
   }
 }
 
-/**
- * Generate Presigned Upload URL for Driver to upload photo directly to MinIO
- */
 async function getPhotoUploadUrl(req, res) {
   const { dailyCheckId } = req.params;
   const { part_type, part_index, content_type } = req.body;
@@ -302,9 +306,6 @@ async function getPhotoUploadUrl(req, res) {
   }
 }
 
-/**
- * Confirm photo record after client finishes uploading to MinIO
- */
 async function uploadPhoto(req, res) {
   const { dailyCheckId } = req.params;
   const { upload_ticket, note } = req.body;

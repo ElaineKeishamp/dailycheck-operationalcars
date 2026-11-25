@@ -1,5 +1,8 @@
 # Staging Deployment
 
+> Dokumen riwayat. Isinya mencatat pemeriksaan atau rancangan pada saat ditulis.
+> Status dan persiapan deployment terbaru ada di [catatan serah terima](HANDOVER.md).
+
 ## Architecture
 
 The staging foundation runs one Docker Compose project on an Ubuntu 22.04 VM. Nginx is the only public gateway and eventually terminates TLS for the application host and the storage host. The React/PWA build is served by Nginx, API requests under `/api/` proxy to the Node.js backend, and browser presigned S3 requests proxy to MinIO through the storage virtual host.
@@ -64,6 +67,8 @@ The existing Let's Encrypt certificate is mounted read-only from `/etc/letsencry
 Never commit, print, or copy the private key. The ACME webroot host path is `/data/dailycheck/certbot` and is mounted read-only into the gateway as `/var/www/certbot`.
 
 ## Compose Commands
+
+Before starting the backend with session-version validation against an existing database, apply `apps/backend/db/2026-11-23-add-user-session-version.sql` once using `psql -v ON_ERROR_STOP=1`. The database initialization file only runs for new PostgreSQL data directories; rebuilding containers does not migrate an existing database. Coordinate the backend and frontend update because password-change responses now carry the replacement session token. Existing users must log in again after this update. No staging migration or deployment is performed by changing these repository files.
 
 Validate the Compose file:
 

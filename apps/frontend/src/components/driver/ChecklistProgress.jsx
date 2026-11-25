@@ -10,7 +10,7 @@ export default function ChecklistProgress({ capturedCount = 0, uploadedCount = 0
           <h2 className="text-base font-bold text-slate-900">Checklist Foto</h2>
           <p className="text-sm text-slate-500">Foto diambil: {capturedCount} dari {totalCount}</p>
           <p className="text-sm text-slate-500">Foto diupload: {uploadedCount} dari {totalCount}</p>
-          <p className="text-xs text-slate-400 mt-1">Status upload hanya dihitung setelah server mengembalikan record foto tersimpan.</p>
+          <p className="text-xs text-slate-500 mt-1">Pastikan semua foto berhasil terkirim sebelum mengirim laporan.</p>
         </div>
         <span className="badge-incomplete self-start sm:self-center">
           {allUploaded ? 'Upload Lengkap' : allCaptured ? 'Lengkap Lokal' : 'Belum Lengkap'}

@@ -15,6 +15,7 @@ import {
 import apiClient from '../../api/client';
 import { StatusBadge, RoleBadge } from '../../components/admin/ui/Badge';
 import { SkeletonLine } from '../../components/admin/ui/Skeleton';
+import { formatDateTime, formatTime } from '../../utils/businessDate';
 
 // Map part_type to human-readable Indonesian labels
 const PART_LABELS = {
@@ -28,21 +29,6 @@ const PART_LABELS = {
   ban: 'Ban',
   lainnya: 'Lainnya',
 };
-
-function formatDateTime(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())} WIB`;
-}
-
-function formatTime(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${pad(d.getHours())}:${pad(d.getMinutes())} WIB`;
-}
 
 /**
  * PhotoCard — displays a single photo entry with MinIO Presigned URL & click-to-preview.
@@ -58,9 +44,7 @@ function PhotoCard({ photo, onPreview }) {
     <div 
       className="admin-card overflow-hidden group cursor-pointer hover:border-blue-300 transition-all duration-200"
       onClick={() => photoUrl && onPreview && onPreview(photo)}
-    >
-      {/* Photo area */}
-      <div className="relative bg-slate-100 aspect-[4/3] flex items-center justify-center overflow-hidden">
+    >      <div className="relative bg-slate-100 aspect-[4/3] flex items-center justify-center overflow-hidden">
         {photoUrl ? (
           <img 
             src={photoUrl} 
@@ -73,29 +57,20 @@ function PhotoCard({ photo, onPreview }) {
             <ImageIcon size={36} />
             <span className="text-xs text-slate-400">Foto belum tersedia</span>
           </div>
-        )}
-
-        {/* Hover zoom overlay */}
-        {photoUrl && (
+        )}        {photoUrl && (
           <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <span className="bg-white/90 text-slate-800 text-xs font-semibold px-3 py-1.5 rounded-full shadow flex items-center gap-1.5">
               <Maximize2 size={13} />
               Perbesar Foto
             </span>
           </div>
-        )}
-
-        {/* Damage badge overlay */}
-        {hasNote && (
+        )}        {hasNote && (
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow z-10">
             <AlertTriangle size={11} />
             CATATAN
           </div>
         )}
-      </div>
-
-      {/* Info */}
-      <div className="p-3">
+      </div>      <div className="p-3">
         <p className="text-sm font-semibold text-slate-800">{label}</p>
         {hasNote ? (
           <p className="text-xs text-red-600 mt-0.5 line-clamp-2">{photo.note}</p>
@@ -151,9 +126,7 @@ export default function AdminReportDetailPage() {
   const otherPhotos = photos.filter((p) => p.part_type !== 'ban');
 
   return (
-    <div className="min-w-0 space-y-5 animate-fade-in">
-      {/* Breadcrumb */}
-      <div className="flex flex-wrap items-center gap-2 text-sm">
+    <div className="min-w-0 space-y-5 animate-fade-in">      <div className="flex flex-wrap items-center gap-2 text-sm">
         <button
           onClick={() => navigate('/admin/reports')}
           className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition-colors"
@@ -165,10 +138,7 @@ export default function AdminReportDetailPage() {
         <span className="text-blue-600 font-medium uppercase text-xs tracking-wide">
           Detail View
         </span>
-      </div>
-
-      {/* Error state */}
-      {error && (
+      </div>      {error && (
         <div className="admin-card p-8 flex flex-col items-center text-center gap-3">
           <AlertTriangle size={32} className="text-red-400" />
           <p className="font-semibold text-slate-700">{error}</p>
@@ -179,10 +149,7 @@ export default function AdminReportDetailPage() {
             Kembali ke Laporan
           </button>
         </div>
-      )}
-
-      {/* Loading state */}
-      {loading && (
+      )}      {loading && (
         <div className="space-y-4">
           <div className="admin-card p-5 space-y-4">
             <SkeletonLine className="w-48 h-6" />
@@ -193,13 +160,8 @@ export default function AdminReportDetailPage() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Content */}
-      {!loading && report && (
-        <>
-          {/* Info card */}
-          <div className="admin-card p-5">
+      )}      {!loading && report && (
+        <>          <div className="admin-card p-5">
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <h2 className="text-lg font-bold text-slate-900">
                 Informasi Pemeriksaan
@@ -207,9 +169,7 @@ export default function AdminReportDetailPage() {
               <StatusBadge status={report.status} />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Driver */}
-              <InfoCard label="Driver">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">              <InfoCard label="Driver">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <User size={14} className="text-slate-400" />
                   <span>
@@ -221,19 +181,13 @@ export default function AdminReportDetailPage() {
                     <RoleBadge role="driver" isShared />
                   )}
                 </div>
-              </InfoCard>
-
-              {/* Vehicle */}
-              <InfoCard label="Mobil Operasional">
+              </InfoCard>              <InfoCard label="Mobil Operasional">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <Car size={14} className="text-blue-500" />
                   <span className="font-bold">{report.plate_number}</span>
                   <span className="text-slate-500">({report.brand} {report.model})</span>
                 </div>
-              </InfoCard>
-
-              {/* Location */}
-              <InfoCard label="Lokasi Check-In">
+              </InfoCard>              <InfoCard label="Lokasi Check-In">
                 <div className="flex min-w-0 items-start gap-2">
                   <MapPin size={14} className="text-red-500" />
                   <span>{report.gps_address || `${report.gps_lat}, ${report.gps_long}` || '—'}</span>
@@ -248,33 +202,22 @@ export default function AdminReportDetailPage() {
                     Lihat Map ↗
                   </a>
                 )}
-              </InfoCard>
-
-              {/* Time */}
-              <InfoCard label="Waktu Laporan">
+              </InfoCard>              <InfoCard label="Waktu Laporan">
                 <div className="flex min-w-0 items-start gap-2">
                   <Clock size={14} className="text-slate-400" />
                   <span>{formatDateTime(report.created_at || report.check_date)}</span>
                 </div>
               </InfoCard>
             </div>
-          </div>
-
-          {/* Summary stat cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Total photos */}
-            <div className="admin-card p-5 flex items-center gap-3">
+          </div>          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">            <div className="admin-card p-5 flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                 <Camera size={18} className="text-blue-600" />
               </div>
               <div>
                 <p className="text-xs text-slate-400 font-medium">Total Foto Inspeksi</p>
-                <p className="text-xl font-bold text-slate-900">{photos.length} <span className="text-sm font-normal text-slate-400">Upload MinIO</span></p>
+                <p className="text-xl font-bold text-slate-900">{photos.length} <span className="text-sm font-normal text-slate-500">foto pemeriksaan</span></p>
               </div>
-            </div>
-
-            {/* Verification Status */}
-            <div className="admin-card p-5 flex items-center gap-3">
+            </div>            <div className="admin-card p-5 flex items-center gap-3">
               <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
                 <Clock size={18} className="text-emerald-600" />
               </div>
@@ -283,29 +226,20 @@ export default function AdminReportDetailPage() {
                 <p className="text-base font-bold text-emerald-700 mt-0.5">Pemeriksaan Lengkap</p>
               </div>
             </div>
-          </div>
-
-          {/* Photo grid */}
-          {photos.length > 0 && (
+          </div>          {photos.length > 0 && (
             <div className="admin-card p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-5 bg-blue-600 rounded-full" />
                   <h3 className="font-semibold text-slate-900">Foto Pengecekan MinIO</h3>
                 </div>
-              </div>
-
-              {/* Main photos grid */}
-              {otherPhotos.length > 0 && (
+              </div>              {otherPhotos.length > 0 && (
                 <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                   {otherPhotos.map((photo) => (
                     <PhotoCard key={photo.check_photos_id} photo={photo} onPreview={setSelectedPhoto} />
                   ))}
                 </div>
-              )}
-
-              {/* Tire section */}
-              {banPhotos.length > 0 && (
+              )}              {banPhotos.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3 pt-2 border-t border-slate-100">
                     <span className="text-sm font-semibold text-slate-700">
@@ -329,10 +263,7 @@ export default function AdminReportDetailPage() {
             </div>
           )}
         </>
-      )}
-
-      {/* Photo Lightbox Modal */}
-      {selectedPhoto && (
+      )}      {selectedPhoto && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-3 backdrop-blur-sm animate-fade-in sm:p-4"
           onClick={() => setSelectedPhoto(null)}
@@ -340,9 +271,7 @@ export default function AdminReportDetailPage() {
           <div 
             className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3 text-white sm:px-5 sm:py-4">
+          >            <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3 text-white sm:px-5 sm:py-4">
               <div className="min-w-0">
                 <h4 className="font-bold text-base">
                   {PART_LABELS[selectedPhoto.part_type] || selectedPhoto.part_type}
@@ -355,19 +284,13 @@ export default function AdminReportDetailPage() {
               >
                 <X size={18} />
               </button>
-            </div>
-
-            {/* Modal Image Area */}
-            <div className="flex min-h-[220px] flex-1 items-center justify-center overflow-auto bg-black/50 p-3 sm:min-h-[300px] sm:p-4">
+            </div>            <div className="flex min-h-[220px] flex-1 items-center justify-center overflow-auto bg-black/50 p-3 sm:min-h-[300px] sm:p-4">
               <img 
                 src={selectedPhoto.url} 
                 alt={selectedPhoto.part_type} 
                 className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
               />
-            </div>
-
-            {/* Modal Footer Note */}
-            {selectedPhoto.note && (
+            </div>            {selectedPhoto.note && (
               <div className="p-4 bg-slate-950 border-t border-slate-800 text-red-400 text-sm flex items-start gap-2">
                 <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
                 <div>

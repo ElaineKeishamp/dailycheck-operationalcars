@@ -3,7 +3,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 
-// Map routes to page titles
 const PAGE_TITLES = {
   '/admin/dashboard': { title: 'Dashboard', subtitle: null },
   '/admin/reports': { title: 'Laporan Harian', subtitle: null },
@@ -13,9 +12,9 @@ const PAGE_TITLES = {
 };
 
 function getPageMeta(pathname) {
-  // Check exact match first
+
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
-  // Check prefix for nested routes (e.g. /admin/reports/:id)
+
   for (const [key, value] of Object.entries(PAGE_TITLES)) {
     if (pathname.startsWith(key)) return value;
   }
@@ -52,7 +51,7 @@ export default function AdminLayout() {
   }, [mobileSidebarOpen]);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50">
+    <div className="min-h-screen overflow-x-hidden bg-[#F3F6FB]">
       <AdminSidebar className="hidden lg:flex" />
 
       {mobileSidebarOpen && (
@@ -76,8 +75,8 @@ export default function AdminLayout() {
           subtitle={subtitle}
           onOpenMenu={() => setMobileSidebarOpen(true)}
         />
-        <main className="min-w-0 flex-1 overflow-x-hidden p-3 sm:p-4 lg:p-6">
-          <Outlet />
+        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-[1440px]"><Outlet /></div>
         </main>
       </div>
     </div>

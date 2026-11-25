@@ -68,9 +68,7 @@ export default function AdminVehiclesPage() {
   });
 
   return (
-    <div className="min-w-0 space-y-5 animate-fade-in">
-      {/* Header actions */}
-      <div className="flex items-center justify-end">
+    <div className="min-w-0 space-y-5 animate-fade-in">      <div className="flex items-center justify-end">
         <div />
         <button
           id="btn-add-vehicle"
@@ -80,15 +78,11 @@ export default function AdminVehiclesPage() {
           <Plus size={16} />
           Tambah Mobil
         </button>
-      </div>
-
-      {/* Table card */}
-      <div className="admin-card overflow-hidden">
-        {/* Filter bar */}
-        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+      </div>      <div className="admin-card overflow-hidden">        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <span className="text-sm text-slate-500">Filter:</span>
             <select
+              aria-label="Filter status kendaraan"
               className="form-select py-2 sm:w-40"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -101,10 +95,7 @@ export default function AdminVehiclesPage() {
           <span className="text-sm text-slate-400 sm:ml-auto">
             {!loading && `${filtered.length} kendaraan`}
           </span>
-        </div>
-
-        {/* Error */}
-        {error && (
+        </div>        {error && (
           <div className="p-5 flex items-center gap-3 bg-red-50 border-b border-red-100">
             <AlertTriangle size={18} className="text-red-500" />
             <p className="text-sm text-red-700">{error}</p>
@@ -112,10 +103,7 @@ export default function AdminVehiclesPage() {
               <RefreshCw size={13} /> Coba Lagi
             </button>
           </div>
-        )}
-
-        {/* Table */}
-        <div className="overflow-x-auto">
+        )}        <div className="overflow-x-auto">
           <table className="min-w-[780px] w-full">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
@@ -150,27 +138,13 @@ export default function AdminVehiclesPage() {
                 </tr>
               ) : (
                 filtered.map((vehicle) => (
-                  <tr key={vehicle.vehicle_id} className="hover:bg-slate-50/50 transition-colors">
-                    {/* Plate */}
-                    <td className="td-cell">
+                  <tr key={vehicle.vehicle_id} className="hover:bg-slate-50/50 transition-colors">                    <td className="td-cell">
                       <span className="font-bold text-slate-900 text-sm tracking-wide">
                         {vehicle.plate_number}
                       </span>
-                    </td>
-
-                    {/* Brand */}
-                    <td className="td-cell font-medium text-slate-700">{vehicle.brand}</td>
-
-                    {/* Model */}
-                    <td className="td-cell text-slate-600">{vehicle.model}</td>
-
-                    {/* Registered date */}
-                    <td className="td-cell text-slate-500">
+                    </td>                    <td className="td-cell font-medium text-slate-700">{vehicle.brand}</td>                    <td className="td-cell text-slate-600">{vehicle.model}</td>                    <td className="td-cell text-slate-500">
                       {formatDate(vehicle.created_at)}
-                    </td>
-
-                    {/* Status toggle */}
-                    <td className="td-cell">
+                    </td>                    <td className="td-cell">
                       <div className="flex items-center gap-2">
                         <Toggle
                           checked={vehicle.status === 'active'}
@@ -179,10 +153,7 @@ export default function AdminVehiclesPage() {
                         />
                         <StatusBadge status={vehicle.status} />
                       </div>
-                    </td>
-
-                    {/* Edit */}
-                    <td className="td-cell">
+                    </td>                    <td className="td-cell">
                       <div className="flex items-center justify-center">
                         <button
                           onClick={() => setEditVehicle(vehicle)}
@@ -198,20 +169,14 @@ export default function AdminVehiclesPage() {
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Record count */}
-        {!loading && filtered.length > 0 && (
+        </div>        {!loading && filtered.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100">
             <p className="text-xs text-slate-400">
               Menampilkan {filtered.length} dari {vehicles.length} kendaraan
             </p>
           </div>
         )}
-      </div>
-
-      {/* Modals */}
-      <AddVehicleModal
+      </div>      <AddVehicleModal
         isOpen={addOpen}
         onClose={() => setAddOpen(false)}
         onSuccess={fetchVehicles}

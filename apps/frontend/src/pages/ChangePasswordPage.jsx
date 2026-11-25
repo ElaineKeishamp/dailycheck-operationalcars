@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, Car, Eye, EyeOff, LockKeyhole } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, LockKeyhole } from 'lucide-react';
+import AuthShell from '../components/AuthShell';
 import apiClient from '../api/client';
 import { useAuth } from '../context/useAuth';
 import { getAuthenticatedHomePath } from '../utils/authRoutes';
@@ -13,7 +14,7 @@ const INITIAL_FORM = {
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { login } = useAuth();
   const [form, setForm] = useState(INITIAL_FORM);
   const [visibleFields, setVisibleFields] = useState({});
   const [loading, setLoading] = useState(false);
@@ -60,14 +61,13 @@ export default function ChangePasswordPage() {
 
     setLoading(true);
     try {
-      await apiClient.post('/auth/change-password', {
+      const response = await apiClient.post('/auth/change-password', {
         old_password: form.oldPassword,
         new_password: form.newPassword,
       });
 
-      const updatedUser = { ...user, must_change_password: false };
-      updateUser({ must_change_password: false });
-      navigate(getAuthenticatedHomePath(updatedUser), { replace: true });
+      login(response.data.user, response.data.token);
+      navigate(getAuthenticatedHomePath(response.data.user), { replace: true });
     } catch (err) {
       const status = err.response?.status;
 
@@ -104,7 +104,7 @@ export default function ChangePasswordPage() {
           <button
             type="button"
             onClick={() => toggleVisible(field)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:text-primary"
             aria-label={isVisible ? `Sembunyikan ${label}` : `Tampilkan ${label}`}
           >
             {isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -118,23 +118,13 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-900/50">
-            <Car size={28} className="text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">Daily Check</h1>
-          <p className="text-blue-300 text-sm mt-1">Operational Cars</p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-2xl p-7">
+    <AuthShell>
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 rounded-lg bg-blue-100 text-primary flex items-center justify-center">
               <LockKeyhole size={19} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Ganti Password</h2>
+              <h1 className="text-2xl font-bold text-slate-900">Ganti Password</h1>
               <p className="text-sm text-slate-500">Buat password baru untuk melanjutkan</p>
             </div>
           </div>
@@ -176,7 +166,7 @@ export default function ChangePasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary-hover active:scale-[0.98] transition-all duration-200 disabled:opacity-70"
+              className="btn-primary w-full"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -188,8 +178,6 @@ export default function ChangePasswordPage() {
               )}
             </button>
           </form>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

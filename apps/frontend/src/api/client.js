@@ -11,7 +11,6 @@ function isAuth401ExemptRequest(config = {}) {
   return AUTH_401_EXEMPT_PATHS.some((path) => requestUrl.endsWith(path));
 }
 
-// Request interceptor: automatically attach JWT token to every request
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -23,11 +22,11 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: handle 401 by clearing auth and redirecting to login
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && !isAuth401ExemptRequest(error.config)) {
+    if (error.response?.status === 401
+      && (!isAuth401ExemptRequest(error.config) || error.response.data?.code === 'SESSION_EXPIRED')) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       if (window.location.pathname !== '/login') {

@@ -1,7 +1,10 @@
+import { BUSINESS_TIME_ZONE } from './businessDate';
+
 const WATERMARK_ERROR = 'Gagal membuat watermark foto. Silakan coba lagi.';
 
 function formatCapturedAt(capturedAt) {
   return new Intl.DateTimeFormat('id-ID', {
+    timeZone: BUSINESS_TIME_ZONE,
     day: 'numeric',
     month: 'long',
     year: 'numeric',

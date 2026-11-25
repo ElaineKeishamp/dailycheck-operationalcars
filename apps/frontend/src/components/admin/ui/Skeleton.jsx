@@ -1,6 +1,4 @@
-/**
- * Skeleton loading components.
- */
+
 
 export function SkeletonLine({ className = '' }) {
   return <div className={`skeleton h-4 ${className}`} />;

@@ -31,7 +31,7 @@ export default function VehicleSelectionCard({
   const availableVehicles = vehicles.filter((v) => !v.checked_today);
   const allVehiclesChecked = vehicles.length > 0 && availableVehicles.length === 0;
   const hasNoVehicles = !vehiclesLoading && !hasVehicleError && (vehicles.length === 0 || allVehiclesChecked);
-  
+
   const isStarting = sessionStatus === 'starting';
   const selectDisabled = vehiclesLoading || hasVehicleError || hasNoVehicles || isStarting || isSessionActive;
   const preparationLocked = isStarting || isSessionActive;
@@ -66,7 +66,7 @@ export default function VehicleSelectionCard({
             {hasVehicleError && <option value="">Gagal memuat kendaraan</option>}
             {allVehiclesChecked && <option value="">Semua mobil telah di-checking hari ini</option>}
             {!allVehiclesChecked && hasNoVehicles && <option value="">Belum ada kendaraan aktif</option>}
-            {!selectDisabled && <option value="">Pilih kendaraan yang belum di-checking</option>}
+            {!selectDisabled && <option value="">Pilih kendaraan</option>}
             {!selectDisabled && availableVehicles.map((vehicle) => (
               <option key={vehicle.vehicle_id} value={vehicle.vehicle_id}>
                 {getVehicleOptionLabel(vehicle)}

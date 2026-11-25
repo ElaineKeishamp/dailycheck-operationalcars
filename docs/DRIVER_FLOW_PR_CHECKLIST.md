@@ -1,5 +1,8 @@
 # Driver Flow PR Checklist
 
+> Dokumen riwayat. Isinya mencatat pemeriksaan atau rancangan pada saat ditulis.
+> Status dan persiapan deployment terbaru ada di [catatan serah terima](HANDOVER.md).
+
 - Branch synchronized with `origin/main`.
 - Frontend lint passes.
 - Frontend production build passes.

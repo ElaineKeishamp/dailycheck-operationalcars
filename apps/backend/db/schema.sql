@@ -103,6 +103,7 @@ CREATE TABLE public.users (
     must_change_password boolean DEFAULT false CONSTRAINT users_must_change__password_not_null NOT NULL,
     reset_token text,
     reset_token_expires timestamp without time zone,
+    session_version integer DEFAULT 0 NOT NULL CONSTRAINT users_session_version_check CHECK (session_version >= 0),
     CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'driver'::character varying])::text[]))),
     CONSTRAINT users_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'inactive'::character varying])::text[])))
 );

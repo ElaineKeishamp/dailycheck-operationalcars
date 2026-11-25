@@ -4,15 +4,6 @@ import Modal from '../ui/Modal';
 import Toggle from '../ui/Toggle';
 import apiClient from '../../../api/client';
 
-/**
- * EditUserModal
- * 
- * Props:
- *   isOpen: boolean
- *   onClose: () => void
- *   user: { users_id, name, email, role, is_shared_account, status }
- *   onSuccess: () => void
- */
 export default function EditUserModal({ isOpen, onClose, user, onSuccess }) {
   const [form, setForm] = useState({
     name: '',
@@ -71,10 +62,8 @@ export default function EditUserModal({ isOpen, onClose, user, onSuccess }) {
       title="Edit User"
       subtitle="Ubah informasi user."
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Name */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+      <form onSubmit={handleSubmit} className="space-y-4">        <div>
+          <label htmlFor="edit-user-name" className="block text-sm font-medium text-slate-700 mb-1.5">
             Nama Lengkap
           </label>
           <input
@@ -85,25 +74,20 @@ export default function EditUserModal({ isOpen, onClose, user, onSuccess }) {
             onChange={(e) => handleChange('name', e.target.value)}
             required
           />
-        </div>
-
-        {/* Email (read-only) */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+        </div>        <div>
+          <label htmlFor="edit-user-email" className="block text-sm font-medium text-slate-700 mb-1.5">
             Email
           </label>
           <input
             type="email"
+            id="edit-user-email"
             className="form-input bg-slate-50 text-slate-500 cursor-not-allowed"
             value={user?.email || ''}
             readOnly
           />
           <p className="text-xs text-slate-400 mt-1">Email tidak dapat diubah.</p>
-        </div>
-
-        {/* Role */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+        </div>        <div>
+          <label htmlFor="edit-user-role" className="block text-sm font-medium text-slate-700 mb-1.5">
             Role Akses
           </label>
           <select
@@ -115,10 +99,7 @@ export default function EditUserModal({ isOpen, onClose, user, onSuccess }) {
             <option value="driver">Driver Utama</option>
             <option value="admin">Admin</option>
           </select>
-        </div>
-
-        {/* Shared Account toggle */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+        </div>        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Users size={16} className="text-slate-500" />
           </div>
@@ -128,27 +109,18 @@ export default function EditUserModal({ isOpen, onClose, user, onSuccess }) {
             label="Shared Account"
             description="Aktifkan untuk driver pengganti/pool car."
           />
-        </div>
-
-        {/* Status toggle */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+        </div>        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
           <Toggle
             checked={form.status === 'active'}
             onChange={(val) => handleChange('status', val ? 'active' : 'inactive')}
             label="Status Aktif"
             description="User dapat login dan menggunakan aplikasi."
           />
-        </div>
-
-        {/* Error */}
-        {error && (
+        </div>        {error && (
           <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-100">
             {error}
           </p>
-        )}
-
-        {/* Actions */}
-        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+        )}        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}

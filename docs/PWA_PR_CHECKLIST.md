@@ -1,5 +1,8 @@
 # PWA PR Checklist
 
+> Dokumen riwayat. Isinya mencatat pemeriksaan atau rancangan pada saat ditulis.
+> Status dan persiapan deployment terbaru ada di [catatan serah terima](HANDOVER.md).
+
 Use this checklist before merging the online-first PWA branch. Mark each item as Passed, Failed, or Not executed for the final PR review.
 
 | Check | Status | Notes |

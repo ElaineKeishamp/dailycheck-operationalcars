@@ -3,15 +3,6 @@ import Modal from '../ui/Modal';
 import Toggle from '../ui/Toggle';
 import apiClient from '../../../api/client';
 
-/**
- * EditVehicleModal
- * 
- * Props:
- *   isOpen: boolean
- *   onClose: () => void
- *   vehicle: { vehicle_id, plate_number, brand, model, status }
- *   onSuccess: () => void
- */
 export default function EditVehicleModal({ isOpen, onClose, vehicle, onSuccess }) {
   const [form, setForm] = useState({
     plate_number: '',
@@ -71,10 +62,8 @@ export default function EditVehicleModal({ isOpen, onClose, vehicle, onSuccess }
       subtitle="Perbarui data aset operasional"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          {/* Plate Number */}
-          <div className="col-span-2 sm:col-span-1">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+        <div className="grid grid-cols-2 gap-4">          <div className="col-span-2 sm:col-span-1">
+            <label htmlFor="edit-vehicle-plate" className="block text-sm font-medium text-slate-700 mb-1.5">
               Plat Nomor
             </label>
             <input
@@ -85,11 +74,8 @@ export default function EditVehicleModal({ isOpen, onClose, vehicle, onSuccess }
               onChange={(e) => handleChange('plate_number', e.target.value)}
               required
             />
-          </div>
-
-          {/* Brand */}
-          <div className="col-span-2 sm:col-span-1">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+          </div>          <div className="col-span-2 sm:col-span-1">
+            <label htmlFor="edit-vehicle-brand" className="block text-sm font-medium text-slate-700 mb-1.5">
               Merk Kendaraan
             </label>
             <input
@@ -100,11 +86,8 @@ export default function EditVehicleModal({ isOpen, onClose, vehicle, onSuccess }
               onChange={(e) => handleChange('brand', e.target.value)}
               required
             />
-          </div>
-
-          {/* Model */}
-          <div className="col-span-2">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+          </div>          <div className="col-span-2">
+            <label htmlFor="edit-vehicle-model" className="block text-sm font-medium text-slate-700 mb-1.5">
               Model / Tipe
             </label>
             <input
@@ -116,27 +99,18 @@ export default function EditVehicleModal({ isOpen, onClose, vehicle, onSuccess }
               required
             />
           </div>
-        </div>
-
-        {/* Status Aktif toggle */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+        </div>        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
           <Toggle
             checked={form.status === 'active'}
             onChange={(val) => handleChange('status', val ? 'active' : 'inactive')}
             label="Status Aktif"
             description="Kendaraan tersedia untuk operasional"
           />
-        </div>
-
-        {/* Error */}
-        {error && (
+        </div>        {error && (
           <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-100">
             {error}
           </p>
-        )}
-
-        {/* Actions */}
-        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+        )}        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}

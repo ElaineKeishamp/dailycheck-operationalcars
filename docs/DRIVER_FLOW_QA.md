@@ -1,5 +1,8 @@
 # Driver Flow QA Checklist
 
+> Dokumen riwayat. Isinya mencatat pemeriksaan atau rancangan pada saat ditulis.
+> Status dan persiapan deployment terbaru ada di [catatan serah terima](HANDOVER.md).
+
 Use this checklist for focused regression passes on the driver daily-check flow. It intentionally avoids admin-only behavior except where driver deletion lockout needs a submitted report.
 
 ## Start Session

@@ -6,8 +6,8 @@ async function resetPasswords() {
     const adminHash = await bcrypt.hash('admin123', 10);
     const driverHash = await bcrypt.hash('driver123', 10);
 
-    await pool.query('UPDATE users SET password_hash = $1 WHERE email = $2', [adminHash, 'admin@test.com']);
-    await pool.query('UPDATE users SET password_hash = $1 WHERE email = $2', [driverHash, 'budi@test.com']);
+    await pool.query('UPDATE users SET password_hash = $1, session_version = session_version + 1 WHERE email = $2', [adminHash, 'admin@test.com']);
+    await pool.query('UPDATE users SET password_hash = $1, session_version = session_version + 1 WHERE email = $2', [driverHash, 'budi@test.com']);
 
     console.log('SUCCESS: Reset passwords!');
     console.log('Admin login  : admin@test.com  / admin123');
